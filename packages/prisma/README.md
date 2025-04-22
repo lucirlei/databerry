@@ -1,1 +1,0 @@
-# `@chaindesk/prisma`

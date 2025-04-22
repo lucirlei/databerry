@@ -1,4 +1,0 @@
-{
-  "dependencyTypes": ["dev", "peer", "prod"],
-  "source": ["package.json", "apps/*/package.json", "packages/*/package.json"]
-}
