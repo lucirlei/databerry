@@ -13,12 +13,12 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AnalyticsContext } from '@app/components/Analytics';
-import Input from '@app/components/Input';
 import Logo from '@app/components/Logo';
 import SEO from '@app/components/SEO';
 
 import { appUrl } from '@chaindesk/lib/config';
 import { RouteNames } from '@chaindesk/lib/types';
+import Input from '@chaindesk/ui/Input';
 
 type Props = {
   // subscription: Subscription | null;
@@ -74,8 +74,14 @@ export default function SignInPage() {
     defaultValues: {},
   });
 
-  const handleSubmitEmail = (values: Schema) => {
-    signIn('email', { email: values.email });
+  const handleSubmitEmail = async (values: Schema) => {
+    try {
+      setIsLoading(true);
+      await signIn('email', { email: values.email });
+    } catch {
+    } finally {
+      setIsLoading(false);
+    }
   };
   return (
     <>
@@ -100,7 +106,7 @@ export default function SignInPage() {
       >
         <>
           <div className="flex flex-col justify-center flex-1 px-4 py-12 sm:px-6 lg:px-20 xl:px-24">
-            <div className="flex w-full max-w-sm mx-auto lg:w-96 ">
+            <div className="flex w-full max-w-sm mx-auto lg:w-96">
               {!isReady && (
                 <CircularProgress
                   size="sm"
@@ -109,6 +115,7 @@ export default function SignInPage() {
                 />
               )}
               <Transition
+                className={'w-full'}
                 show={isReady}
                 enter="duration-[350ms]"
                 enterFrom="opacity-0 translate-y-[100px]"
@@ -118,13 +125,29 @@ export default function SignInPage() {
                 // leaveTo="opacity-0"
               >
                 <div className="flex flex-col items-center justify-center">
-                  <a href="https://chaindesk.ai">
-                    <Logo className="cursor-pointer w-14" />
-                  </a>
-                  {/* <span className="w-8 h-8 mx-auto text-xl font-extrabold text-transparent rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></span> */}
-                  <Typography className="mt-2 text-3xl font-extrabold text-center">
-                    Sign in
-                  </Typography>
+                  <div className="inline-flex items-center mr-auto space-x-2">
+                    <a
+                      href="https://chaindesk.ai"
+                      // className="absolute top-4 left-4 md:top-8 md:left-8"
+                    >
+                      <div className="inline-flex items-center space-x-2">
+                        <div className="flex items-center justify-center w-8 h-8 bg-transparent rounded shadow-sm shadow-zinc-950/20">
+                          <Logo className="cursor-pointer w-14" />
+                        </div>
+                        <Typography level="h4" fontWeight="xl">
+                          {`Chaindesk`}
+                        </Typography>
+                      </div>
+                    </a>
+
+                    {/* <Typography level="h4" fontWeight="xl">
+                      {`/`}
+                    </Typography>
+
+                    <Typography level="h4" fontWeight="xl">
+                      Sign in
+                    </Typography> */}
+                  </div>
                 </div>
 
                 <div className="w-full mt-8">
@@ -160,7 +183,7 @@ export default function SignInPage() {
 
                         {/* <div className="w-full border-t border-gray-500" /> */}
                       </div>
-                      <div className="relative flex justify-center ">
+                      <div className="relative flex justify-center">
                         <Typography
                           level="body-xs"
                           className="px-2"

@@ -11,51 +11,17 @@ import cors from '@chaindesk/lib/middlewares/cors';
 import pipe from '@chaindesk/lib/middlewares/pipe';
 import rateLimit from '@chaindesk/lib/middlewares/rate-limit';
 import roles from '@chaindesk/lib/middlewares/roles';
-import { UpdateAgentSchema } from '@chaindesk/lib/types/dtos';
+import {
+  agentInclude,
+  ToolSchema,
+  UpdateAgentSchema,
+} from '@chaindesk/lib/types/dtos';
 import { AppNextApiRequest } from '@chaindesk/lib/types/index';
 import validate from '@chaindesk/lib/validate';
 import { AgentVisibility, MembershipRole, Prisma } from '@chaindesk/prisma';
 import { prisma } from '@chaindesk/prisma/client';
 
 const handler = createLazyAuthHandler();
-
-export const agentInclude: Prisma.AgentInclude = {
-  organization: {
-    select: {
-      id: true,
-      subscriptions: {
-        select: {
-          id: true,
-        },
-        where: {
-          status: {
-            in: ['active'],
-          },
-        },
-      },
-    },
-  },
-  tools: {
-    include: {
-      datastore: {
-        include: {
-          _count: {
-            select: {
-              datasources: {
-                where: {
-                  status: {
-                    in: ['running', 'pending'],
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      form: true,
-    },
-  },
-};
 
 export const getAgent = async (
   req: AppNextApiRequest,
@@ -66,7 +32,7 @@ export const getAgent = async (
 
   const agent = await prisma.agent.findUnique({
     where: {
-      id,
+      ...(id.startsWith('@') ? { handle: id?.replace(/^@/, '') } : { id }),
     },
     include: {
       ...agentInclude,
@@ -157,12 +123,15 @@ export const updateAgent = async (
     }
   }
 
+  const { id, ownerId, organizationId, formId, organization, ...rest } =
+    data as any;
+
   return prisma.agent.update({
     where: {
       id: agentId,
     },
     data: {
-      ...data,
+      ...(rest as UpdateAgentSchema),
       interfaceConfig: data.interfaceConfig || {},
       tools: {
         createMany: {
@@ -172,13 +141,17 @@ export const updateAgent = async (
               serviceProvider,
               datastore, // ⚠️ do not remove datastore from spreading as passing the object to createMany will throw an error
               form, // Same
+              type,
               ...otherToolProps
             }) => ({
-              ...otherToolProps,
+              type,
+              // TODO: fix tools types.
+              ...(otherToolProps as Record<string, unknown>),
               ...(serviceProviderId ? { serviceProviderId } : {}),
             })
           ),
         },
+        // TODO: fix tools types.
         updateMany: updatedTools.map((tool) => ({
           where: {
             id: tool.id,
@@ -189,8 +162,18 @@ export const updateAgent = async (
                   config: tool.config,
                 }
               : {}),
+            ...(tool?.type === 'form'
+              ? {
+                  config: tool.config,
+                }
+              : {}),
+            ...(tool?.type === 'lead_capture'
+              ? {
+                  config: tool.config,
+                }
+              : {}),
           },
-        })),
+        })) as any,
         deleteMany: removedTools,
       },
     },

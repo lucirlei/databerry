@@ -43,6 +43,7 @@
     "msgpackr": "^1.9.3",
     "nanoid": "^4.0.2",
     "next-connect": "^0.13.0",
+    "node-html-parser": "^6.1.13",
     "nodemailer": "^6.9.1",
     "p-map": "^5.5.0",
     "p-retry": "^5.1.2",
@@ -54,7 +55,9 @@
     "react-hot-toast": "^2.4.1",
     "react-i18next": "^13.3.1",
     "request-ip": "^3.3.0",
+    "rss-parser": "^3.13.0",
     "rxjs": "^7.8.1",
+    "sharp": "^0.32.1",
     "stripe": "^11.17.0",
     "swr": "^2.1.1",
     "uuid": "^9.0.0",
@@ -71,14 +74,14 @@
     "@types/node": "18.15.10",
     "@types/nodemailer": "^6.4.7",
     "@types/react": "18.0.29",
-    "@types/react-dom": "18.0.11",
+    "@types/react-dom": "^18.2.17",
     "@types/request-ip": "^0.0.41",
     "@types/uuid": "^9.0.1",
-    "openai": "^4.23.0"
+    "openai": "^4.46.1"
   },
   "peerDependencies": {
-    "next": "14.0.4",
-    "next-auth": "^4.24.3",
+    "next": "14.2",
+    "next-auth": "^4.24.7",
     "react": "18.2.0"
   }
 }

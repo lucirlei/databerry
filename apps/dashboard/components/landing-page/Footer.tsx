@@ -7,7 +7,7 @@ import { Container } from '@app/components/landing-page/Container';
 import { Logo } from '@app/components/landing-page/Logo';
 import { NavLink } from '@app/components/landing-page/NavLink';
 
-import products from '@chaindesk/lib/data/products.json';
+import products from '@chaindesk/lib/data/products';
 import { RouteNames } from '@chaindesk/lib/types';
 
 const navigation = {
@@ -29,29 +29,29 @@ const navigation = {
     },
   ],
   support: [
+    // {
+    //   name: 'Help Center',
+    //   href: 'https://chaindesk.ai/help',
+    //   target: '_blank',
+    // },
     {
-      name: 'Help Center',
-      href: 'https://chaindesk.ai/help',
-      target: '_blank',
-    },
-    {
-      name: 'API Documentation',
+      name: 'Documentation',
       href: 'https://docs.chaindesk.ai',
       target: '_blank',
     },
     {
       name: 'GDPR',
-      href: 'https://www.chaindesk.ai/help/gdpr',
+      href: 'https://docs.chaindesk.ai/privacy/gdpr',
       target: '_blank',
     },
     {
       name: 'Privacy',
-      href: 'https://www.chaindesk.ai/help/privacy-policy',
+      href: 'https://docs.chaindesk.ai/privacy/privacy-policy',
       target: '_blank',
     },
     {
       name: 'Terms',
-      href: 'https://www.chaindesk.ai/help/terms-conditions',
+      href: 'https://docs.chaindesk.ai/privacy/terms',
       target: '_blank',
     },
     // { name: 'Guides', href: '#' },

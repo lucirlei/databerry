@@ -1,7 +1,6 @@
 import * as Fathom from 'fathom-client';
 import mixpanel from 'mixpanel-browser';
 import { useRouter } from 'next/router';
-import { signOut, useSession } from 'next-auth/react';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import React, { createContext, useEffect } from 'react';
@@ -37,12 +36,11 @@ export const AnalyticsContext = createContext<AnalyticsContext>({});
 
 type Props = {
   children?: any;
+  userId?: string;
 };
 
-function Analytics({ children }: Props) {
-  const session = useSession();
+function Analytics({ children, userId }: Props) {
   const router = useRouter();
-  const userId = session?.data?.user?.id;
 
   const capture = React.useCallback(
     (data: { event: string; payload?: Record<string, unknown> }) => {
@@ -57,6 +55,10 @@ function Analytics({ children }: Props) {
 
         if (process.env.NEXT_PUBLIC_GA_ID && window?.gtag) {
           window?.gtag?.('event', data.event, data.payload);
+        }
+
+        if (process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID) {
+          (window as any)?.fbq?.('track', data.event, data.payload);
         }
       } catch (err) {
         console.error(err);

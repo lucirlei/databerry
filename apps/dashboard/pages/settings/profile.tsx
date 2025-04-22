@@ -3,6 +3,8 @@ import Button from '@mui/joy/Button';
 import Divider from '@mui/joy/Divider';
 import Stack from '@mui/joy/Stack';
 import axios from 'axios';
+import cuid from 'cuid';
+import mime from 'mime-types';
 import { GetServerSidePropsContext } from 'next/types';
 import { useSession } from 'next-auth/react';
 import { ReactElement } from 'react';
@@ -10,24 +12,49 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 
-import Input from '@app/components/Input';
 import OrganizationForm from '@app/components/OrganizationForm';
 import SettingsLayout from '@app/components/SettingsLayout';
+import IconInput from '@app/components/ui/IconInput';
 import SettingCard from '@app/components/ui/SettingCard';
-import useStateReducer from '@app/hooks/useStateReducer';
 
 import { UpdateUserProfileSchema } from '@chaindesk/lib/types/dtos';
 import { withAuth } from '@chaindesk/lib/withAuth';
+import useFileUpload from '@chaindesk/ui/hooks/useFileUpload';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
+import Input from '@chaindesk/ui/Input';
 
 export default function ProfileSettingsPage() {
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const [state, setState] = useStateReducer({
     isUpdatingProfile: false,
   });
+  const { upload, isUploading } = useFileUpload();
 
   const methods = useForm<UpdateUserProfileSchema>({
     resolver: zodResolver(UpdateUserProfileSchema),
   });
+
+  const handleUploadPicture = async (event: any) => {
+    const file = event?.target?.files?.[0];
+    const fileName = `${cuid()}.${mime.extension(file.type)}`;
+
+    const [customPictureUrl] = await upload([
+      {
+        case: 'userIcon',
+        fileName,
+        file,
+      },
+    ]);
+
+    methods.setValue('customPicture', customPictureUrl, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    await methods.handleSubmit(updateProfile)();
+  };
+
+  console.log('EROORS', methods.formState);
 
   const updateProfile = async (data: UpdateUserProfileSchema) => {
     try {
@@ -56,9 +83,21 @@ export default function ProfileSettingsPage() {
     }
   }, [session?.user?.email]);
 
+  React.useEffect(() => {
+    if (status === 'authenticated') {
+      methods.reset({
+        email: session?.user?.email || '',
+        name: session?.user?.name || '',
+        customPicture: session?.user?.customPicture,
+      });
+    }
+  }, [status]);
+
   if (!session?.user) {
     return null;
   }
+
+  const customPicture = methods.watch('customPicture');
 
   return (
     <Stack
@@ -98,6 +137,21 @@ export default function ProfileSettingsPage() {
             label="Name"
             defaultValue={session?.user?.name || ''}
             {...methods.register('name')}
+          />
+
+          <IconInput
+            // innerIcon={<CorporateFareRoundedIcon />}
+            defaultIconUrl={session?.user?.customPicture || ''}
+            value={customPicture!}
+            onChange={handleUploadPicture}
+            onDelete={() => {
+              methods.setValue('customPicture', null, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+            }}
+            // disabled={!hasAdminRole(session?.roles)}
+            loading={isUploading || methods.formState.isSubmitting}
           />
 
           <input type="submit" hidden />

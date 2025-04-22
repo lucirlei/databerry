@@ -21,14 +21,16 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import html from 'react-syntax-highlighter/dist/esm/languages/hljs/htmlbars';
 import docco from 'react-syntax-highlighter/dist/esm/styles/hljs/vs2015';
 
-import { theme, themeKeys } from '@app/utils/themes/chat-bubble';
-
 import { CreateAgentSchema } from '@chaindesk/lib/types/dtos';
+import ChatBoxLoader from '@chaindesk/ui/ChatBoxLoader';
+import ChatBubble from '@chaindesk/ui/embeds/chat-bubble';
+import { useDeepCompareMemoize } from '@chaindesk/ui/hooks/useDeepCompareEffect';
+import Markdown from '@chaindesk/ui/Markdown';
+import WidgetThemeProvider from '@chaindesk/ui/themes/embeds-provider';
 
 import CommonInterfaceInput from './AgentInputs/CommonInterfaceInput';
 import CustomCSSInput from './AgentInputs/CustomCSSInput';
 import AgentForm from './AgentForm';
-import ChatBubble from './ChatBubble';
 import ConnectForm from './ConnectForm';
 import ReactFrameStyleFix from './ReactFrameStyleFix';
 
@@ -40,24 +42,105 @@ type Props = {
   agentId: string;
 };
 
+function RenderWidget({ agentId, config }: any) {
+  const memoizedConfig = useDeepCompareMemoize(config);
+  const MemoizedChatBubble = React.useMemo(() => {
+    return (
+      <Frame
+        style={{
+          width: '100%',
+          height: 600,
+          border: '1px solid rgba(0, 0, 0, 0.2)',
+          borderRadius: 20,
+        }}
+      >
+        <FrameContextConsumer>
+          {({ document }) => {
+            const cache = createCache({
+              key: 'iframe',
+              container: document?.head,
+              prepend: true,
+              speedy: true,
+            });
+
+            return (
+              <WidgetThemeProvider
+                emotionCache={cache}
+                prefix="chaindesk-bubble"
+              >
+                <ReactFrameStyleFix />
+
+                <Box
+                  sx={{
+                    width: '100vw',
+                    height: '100vh',
+                    maxHeight: '100%',
+                    overflow: 'hidden',
+                    p: 2,
+                  }}
+                >
+                  <ChatBoxLoader
+                    // eslint-disable-next-line
+                    children={ChatBubble}
+                    agentId={agentId}
+                    initConfig={memoizedConfig}
+                  />
+
+                  {memoizedConfig?.customCSS && (
+                    <style
+                      dangerouslySetInnerHTML={{
+                        __html: memoizedConfig?.customCSS || '',
+                      }}
+                    ></style>
+                  )}
+                </Box>
+              </WidgetThemeProvider>
+            );
+          }}
+        </FrameContextConsumer>
+      </Frame>
+    );
+  }, [agentId, memoizedConfig]);
+
+  return MemoizedChatBubble;
+}
+
 export default function BubbleWidgetSettings(props: Props) {
-  const installScript = `<script
-    defer
-    id="${props.agentId}"
-    data-name="databerry-chat-bubble"
-    src="https://cdn.jsdelivr.net/npm/@databerry/chat-bubble@latest"
-  ></script>`;
-  //   const installScript = `<script type="text/javascript">
-  //   (function() {
-  //     d = document;
-  //     s = d.createElement('script');
-  //     s.id = '${getAgentQuery?.data?.id}';
-  //     s.setAttribute('data-name', 'databerry-chat-bubble');
-  //     s.src = 'https://cdn.jsdelivr.net/npm/@databerry/chat-bubble@latest';
-  //     s.async = 1;
-  //     d.getElementsByTagName('head')[0].appendChild(s);
-  //   })();
-  // </script>`;
+  const installScript = `<script type="module">
+  import Chatbox from 'https://cdn.jsdelivr.net/npm/@chaindesk/embeds@latest/dist/chatbox/index.js';
+
+  const widget = await Chatbox.initBubble({
+    agentId: '${props.agentId}',
+    
+    // optional 
+    // If provided will create a contact for the user and link it to the conversation
+    contact: {
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'customer@email.com',
+      phoneNumber: '+33612345644',
+      userId: '42424242',
+    },
+    // optional
+    // Override initial messages
+    initialMessages: [
+      'Hello Georges how are you doing today?',
+      'How can I help you ?',
+    ],
+    // optional
+    // Provided context will be appended to the Agent system prompt
+    context: "The user you are talking to is John. Start by Greeting him by his name.",
+  });
+
+  // open the chat bubble
+  widget.open();
+
+  // close the chat bubble
+  widget.close()
+
+  // or 
+  widget.toggle()
+</script>`;
 
   return (
     <AgentForm
@@ -73,6 +156,7 @@ export default function BubbleWidgetSettings(props: Props) {
         return (
           <ConnectForm<CreateAgentSchema>>
             {({ watch, register, control, formState, setValue }) => {
+              const { isDirty, isValid } = formState;
               const config = watch('interfaceConfig');
               return (
                 <>
@@ -112,13 +196,26 @@ export default function BubbleWidgetSettings(props: Props) {
                           />
                         </FormControl>
 
-                        <Button
-                          type="submit"
-                          loading={mutation.isMutating}
-                          sx={{ ml: 'auto', mt: 2 }}
-                        >
-                          Update
-                        </Button>
+                        {isDirty && isValid && (
+                          <Button
+                            type="submit"
+                            loading={mutation.isMutating}
+                            sx={{
+                              zIndex: 2,
+                              ml: 'auto',
+                              mt: 2,
+                              position: 'fixed',
+                              bottom: 20,
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              borderRadius: '30px',
+                            }}
+                            size="lg"
+                            color="success"
+                          >
+                            Save
+                          </Button>
+                        )}
                       </Stack>
 
                       <Stack
@@ -128,63 +225,10 @@ export default function BubbleWidgetSettings(props: Props) {
                         spacing={2}
                       >
                         {query?.data?.id && config && (
-                          <Frame
-                            style={{
-                              width: '100%',
-                              height: 600,
-                              border: '1px solid rgba(0, 0, 0, 0.2)',
-                              borderRadius: 20,
-                            }}
-                          >
-                            <FrameContextConsumer>
-                              {({ document }) => {
-                                const cache = createCache({
-                                  key: 'iframe',
-                                  container: document?.head,
-                                  prepend: true,
-                                  speedy: true,
-                                });
-
-                                return (
-                                  <StyledEngineProvider injectFirst>
-                                    <CacheProvider value={cache}>
-                                      <CssVarsProvider
-                                        theme={theme}
-                                        defaultMode="light"
-                                        {...themeKeys}
-                                      >
-                                        <CssBaseline />
-
-                                        <ReactFrameStyleFix />
-
-                                        <Box
-                                          sx={{
-                                            width: '100vw',
-                                            height: '100vh',
-                                            maxHeight: '100%',
-                                            overflow: 'hidden',
-                                            p: 2,
-                                          }}
-                                        >
-                                          <ChatBubble
-                                            agentId={query?.data?.id!}
-                                            initConfig={config}
-                                          />
-                                          {config?.customCSS && (
-                                            <style
-                                              dangerouslySetInnerHTML={{
-                                                __html: config?.customCSS || '',
-                                              }}
-                                            ></style>
-                                          )}
-                                        </Box>
-                                      </CssVarsProvider>
-                                    </CacheProvider>
-                                  </StyledEngineProvider>
-                                );
-                              }}
-                            </FrameContextConsumer>
-                          </Frame>
+                          <RenderWidget
+                            agentId={query?.data?.id}
+                            config={config}
+                          />
                         )}
 
                         <Stack>{<CustomCSSInput />}</Stack>
@@ -206,15 +250,7 @@ export default function BubbleWidgetSettings(props: Props) {
                           });
                         }}
                       >
-                        <SyntaxHighlighter
-                          language="htmlbars"
-                          style={docco}
-                          customStyle={{
-                            borderRadius: 10,
-                          }}
-                        >
-                          {installScript}
-                        </SyntaxHighlighter>
+                        <Markdown>{`~~~html\n${installScript}\n`}</Markdown>
                       </Box>
                     </Stack>
                   </Stack>

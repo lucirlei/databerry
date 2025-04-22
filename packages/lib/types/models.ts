@@ -72,31 +72,56 @@ export const DatasourceSchema = z.discriminatedUnion('type', [
     config: DatasourceConfigBaseSchema.extend({
       source_url: z.string().trim().optional(),
       sitemap: z.string().trim().optional(),
-    }).refine(
-      (data) => {
-        if (data.sitemap) {
-          return !!z
-            .string()
-            .url()
-            .parse(data.sitemap, {
-              path: ['sitemap'],
-            });
-        } else if (data.source_url) {
-          return !!z
-            .string()
-            .url()
-            .parse(data.source_url, {
-              path: ['source_url'],
-            });
+      black_listed_urls: z.array(z.string()).optional(),
+    }).superRefine((data, ctx) => {
+      if (data.sitemap) {
+        const result = z
+          .string()
+          .url()
+          .safeParse(data.sitemap, {
+            path: ['sitemap'],
+          });
+        if (!result.success) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.invalid_string,
+            validation: 'url',
+            fatal: true,
+            message: 'sitemap must be a valid url.',
+            path: ['sitemap'],
+          });
         }
-
-        return false;
-      },
-      {
-        message: 'You must provide either a web site URL or a sitemap URL',
-        path: ['source_url'],
+      } else if (data.source_url) {
+        const result = z.string().url().safeParse(data.source_url);
+        if (!result.success) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.invalid_string,
+            validation: 'url',
+            fatal: true,
+            message: 'source_url must be a valid url.',
+            path: ['source_url'],
+          });
+        }
+      } else if (data.black_listed_urls) {
+        data.black_listed_urls.forEach((url, index) => {
+          const isNotValid =
+            z
+              .string()
+              .url()
+              .safeParse(url, {
+                path: ['black_listed_urls'],
+              }).success !== true;
+          if (isNotValid) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.invalid_string,
+              validation: 'url',
+              message: 'invalid  url.',
+              fatal: true,
+              path: [`black_listed_urls.${index}`],
+            });
+          }
+        });
       }
-    ),
+    }),
   }),
   DatasourceBaseSchema.extend({
     type: z.literal(DatasourceType.web_page),
@@ -141,6 +166,7 @@ export const DatasourceSchema = z.discriminatedUnion('type', [
   }),
   DatasourceBaseSchema.extend({
     type: z.literal(DatasourceType.google_drive_folder),
+    hasOptIn: z.boolean().optional(),
     config: DatasourceConfigBaseSchema.extend({
       mime_type: z.string().min(1),
       serviceProviderId: z.string().min(1),
@@ -150,6 +176,7 @@ export const DatasourceSchema = z.discriminatedUnion('type', [
   }),
   DatasourceBaseSchema.extend({
     type: z.literal(DatasourceType.google_drive_file),
+    hasOptIn: z.boolean().optional(),
     config: DatasourceConfigBaseSchema.extend({
       mime_type: z.string().min(1),
       serviceProviderId: z.string().min(1),
@@ -208,13 +235,15 @@ export type DatasourceGoogleDrive = Extract<
 
 export const AgentInterfaceConfig = z.object({
   displayName: z.string().trim().optional(),
-  primaryColor: z
-    .string()
-    .refine((val) => /^#[0-9A-F]{6}[0-9a-f]{0,2}$/i.test(val), {
-      message: 'Invalid hex color',
-    })
-    .optional(),
+  primaryColor: z.string().optional(),
+  // .refine((val) => /^#[0-9A-F]{6}[0-9a-f]{0,2}$/i.test(val), {
+  //   message: 'Invalid hex color',
+  // })
   initialMessage: z.string().trim().optional(),
+  initialMessages: z
+    .array(z.string())
+    .optional()
+    .transform((arr) => arr?.filter((each) => !!each)),
   isInitMessagePopupDisabled: z.boolean().optional(),
   isHumanRequestedDisabled: z.boolean().optional(),
   isMarkAsResolvedDisabled: z.boolean().optional(),
@@ -232,14 +261,18 @@ export const AgentInterfaceConfig = z.object({
   githubURL: z.string().optional(),
   websiteURL: z.string().optional(),
   customCSS: z.string().optional(),
+  iconUrl: z.string().optional(),
+  bubbleButtonStyle: z.any({}).optional(),
+  bubbleIconStyle: z.any({}).optional(),
+  iconStyle: z.any({}).optional(),
   rateLimit: z
     .object({
       enabled: z.boolean().optional(),
-      maxQueries: z
+      maxQueries: z.coerce
         .number()
         .or(z.string().pipe(z.coerce.number().positive()))
         .optional(),
-      interval: z
+      interval: z.coerce
         .number()
         .or(z.string().pipe(z.coerce.number().positive()))
         .optional(),
@@ -248,4 +281,8 @@ export const AgentInterfaceConfig = z.object({
     .optional(),
 });
 
-export type AgentInterfaceConfig = z.infer<typeof AgentInterfaceConfig>;
+export type AgentInterfaceConfig = z.infer<typeof AgentInterfaceConfig> & {
+  bubbleButtonStyle?: React.CSSProperties;
+  bubbleIconStyle?: React.CSSProperties;
+  iconStyle?: React.CSSProperties;
+};

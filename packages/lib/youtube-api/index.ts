@@ -1,8 +1,13 @@
 import axios from 'axios';
+import { load } from 'cheerio';
 import { google } from 'googleapis';
-import { TranscriptResponse, YoutubeTranscript } from 'youtube-transcript';
+import { TranscriptResponse } from 'youtube-transcript';
 
 import { YOUTUBE_VIDEO_URL_RE } from './lib';
+import {
+  // TranscriptResponse,
+  YoutubeTranscript,
+} from './youtube-transcript-fix';
 
 export type YoutubeTranscriptType = {
   text: string;
@@ -218,5 +223,83 @@ export default class YoutubeApi {
       }
     }
     return groups;
+  }
+
+  static async getVideoHTML(videoId: string) {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const { data } = await axios.get(url);
+    return data;
+  }
+
+  static async _getVideoCategory(html: string) {
+    // Autos & Vehicles
+    // Comedy
+    // Education
+    // Entertainment
+    // Film & Animation
+    // Gaming
+    // Howto & Style
+    // Music
+    // News & Politics
+    // Nonprofits & Activism
+    // People & Blogs
+    // Pets & Animals
+    // Science & Technology
+    // Sports
+    // Travel & Events
+
+    try {
+      const $ = load(html);
+      const scripts = $('script');
+      let category = null as string | null;
+
+      scripts.each((i: any, el: any) => {
+        const scriptContent = $(el).html();
+        if (scriptContent?.includes?.('"category"')) {
+          const jsonMatch = scriptContent.match(/"category": ?"([^"]+)"/);
+          if (jsonMatch && jsonMatch[1]) {
+            category = jsonMatch[1];
+            return false; // Break the loop
+          }
+        }
+      });
+
+      return category
+        ? Buffer.from(category.replace(/\\u0026/, '&')).toString('utf-8')
+        : category;
+    } catch (error) {
+      console.error('Error fetching page:', error);
+      return null;
+    }
+  }
+
+  static async getVideoCategory(videoId: string) {
+    const html = await YoutubeApi.getVideoHTML(videoId);
+    return YoutubeApi._getVideoCategory(html);
+  }
+
+  static async _getVideoKeywords(html: string) {
+    try {
+      const $ = load(html);
+
+      return ($('meta[name="keywords"]').attr('content') || '').split(',');
+    } catch (error) {
+      console.error('Error fetching page:', error);
+      return [];
+    }
+  }
+
+  static async getVideoKeywords(videoId: string) {
+    const html = await YoutubeApi.getVideoHTML(videoId);
+    return YoutubeApi._getVideoKeywords(html);
+  }
+
+  static async getVideoMetadataFromHTML(videoId: string) {
+    const html = await YoutubeApi.getVideoHTML(videoId);
+
+    const category = await YoutubeApi._getVideoCategory(html);
+    const keywords = await YoutubeApi._getVideoKeywords(html);
+
+    return { category, keywords };
   }
 }

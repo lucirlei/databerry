@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import EastRoundedIcon from '@mui/icons-material/EastRounded';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import {
@@ -26,24 +27,24 @@ import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 
-import Input from '@app/components/Input';
 import { Footer } from '@app/components/landing-page/Footer';
 import PoweredByCard from '@app/components/PoweredByCard';
 import SEO from '@app/components/SEO';
 import TopBar from '@app/components/TopBar';
 
+import slugify from '@chaindesk/lib/slugify';
 import {
   fetcher,
   generateActionFetcher,
   HTTP_METHOD,
 } from '@chaindesk/lib/swr-fetcher';
+import { SummaryPageProps } from '@chaindesk/lib/types';
 import { YoutubeSummarySchema } from '@chaindesk/lib/types/dtos';
 import { YOUTUBE_VIDEO_URL_RE } from '@chaindesk/lib/youtube-api/lib';
 import { Prisma } from '@chaindesk/prisma';
+import Input from '@chaindesk/ui/Input';
 
 import { getLatestVideos } from '../../api/tools/youtube-summary';
-
-import { SummaryPageProps } from './[id]';
 
 type FormType = z.infer<typeof YoutubeSummarySchema>;
 
@@ -132,7 +133,7 @@ export default function Youtube() {
         ogImage={`https://www.chaindesk.ai/api/og/youtube-summary`}
       />
       <Stack sx={{ width: '100vw', minHeight: '100vh' }}>
-        <TopBar />
+        <TopBar href="https://www.chaindesk.ai/?utm_source=landing_page&utm_medium=tool&utm_campaign=youtube_summarizer" />
 
         <Stack
           sx={{
@@ -163,7 +164,7 @@ export default function Youtube() {
             </Stack>
             <form
               onSubmit={handleSubmit(onSubmit)}
-              className="flex-wrap items-center min-w-full space-y-2 md:flex md:space-y-0 md:space-x-2"
+              className="flex-wrap items-center space-y-2 min-w-full md:flex md:space-y-0 md:space-x-2"
             >
               <Stack spacing={2} sx={{ width: '100%', alignItems: 'center' }}>
                 <Stack sx={{ width: '100%' }} spacing={1}>
@@ -196,7 +197,7 @@ export default function Youtube() {
                     }
                   />
                   <a
-                    href="https://chaindesk.ai"
+                    href="https://www.chaindesk.ai/?utm_source=landing_page&utm_medium=tool&utm_campaign=youtube_summarizer"
                     target="_blank"
                     style={{
                       textDecoration: 'none',
@@ -258,7 +259,9 @@ export default function Youtube() {
                     })}
                   >
                     <Link
-                      href={`/tools/youtube-summarizer/${each.externalId}`}
+                      href={`/tools/youtube-summarizer/${slugify(
+                        (each as SummaryPageProps)?.output?.metadata?.title
+                      )}-${each.externalId}`}
                       className="w-full"
                     >
                       <Card sx={{ width: '100%' }}>
@@ -291,6 +294,20 @@ export default function Youtube() {
                     </Link>
                   </Box>
                 ))}
+              </Stack>
+
+              <Stack sx={{ justifyContent: 'center' }}>
+                <Link
+                  href="/tools/youtube-summarizer/all/0"
+                  style={{ marginLeft: 'auto', marginRight: 'auto' }}
+                >
+                  <Button
+                    endDecorator={<ArrowForwardRoundedIcon />}
+                    variant="outlined"
+                  >
+                    🎬 More Video Summaries
+                  </Button>
+                </Link>
               </Stack>
             </Stack>
           )}

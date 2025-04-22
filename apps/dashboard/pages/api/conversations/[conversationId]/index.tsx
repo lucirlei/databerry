@@ -1,30 +1,19 @@
-import Cors from 'cors';
 import { NextApiResponse } from 'next';
 import z from 'zod';
 
-import IntegrationsEventDispatcher from '@app/utils/integrations-event-dispatcher';
-
-import { ConversationResolved, HelpRequest, render } from '@chaindesk/emails';
+import { AcceptedAIEnabledMimeTypes } from '@chaindesk/lib/accepted-mime-types';
 import { ApiError, ApiErrorType } from '@chaindesk/lib/api-error';
 import { deleteFolderFromS3Bucket } from '@chaindesk/lib/aws';
 import {
   createLazyAuthHandler,
   respond,
 } from '@chaindesk/lib/createa-api-handler';
-import mailer from '@chaindesk/lib/mailer';
+import EventDispatcher from '@chaindesk/lib/events/dispatcher';
 import cors from '@chaindesk/lib/middlewares/cors';
 import pipe from '@chaindesk/lib/middlewares/pipe';
-import runMiddleware from '@chaindesk/lib/run-middleware';
 import { ConversationUpdateSchema } from '@chaindesk/lib/types/dtos';
 import { AppEventType, AppNextApiRequest } from '@chaindesk/lib/types/index';
-import {
-  Agent,
-  AgentVisibility,
-  Conversation,
-  ConversationStatus,
-  Prisma,
-  ServiceProvider,
-} from '@chaindesk/prisma';
+import { AgentVisibility, ConversationStatus, Prisma } from '@chaindesk/prisma';
 import { prisma } from '@chaindesk/prisma/client';
 const handler = createLazyAuthHandler();
 
@@ -44,11 +33,51 @@ export const getConversation = async (
       status: true,
       isAiEnabled: true,
       userId: true,
-      agent: true,
+      agent: {
+        include: {
+          tools: true,
+        },
+      },
       lead: true,
+      metadata: true,
+      participantsVisitors: {
+        include: {
+          contact: true,
+        },
+      },
+      participantsContacts: true,
+      attachments: {
+        where: {
+          mimeType: {
+            in: AcceptedAIEnabledMimeTypes,
+          },
+        },
+      },
       messages: {
         take: 50,
         include: {
+          agent: {
+            select: {
+              id: true,
+              name: true,
+              iconUrl: true,
+            },
+          },
+          contact: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              email: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              picture: true,
+              customPicture: true,
+            },
+          },
           attachments: true,
           approvals: {
             include: {
@@ -59,6 +88,7 @@ export const getConversation = async (
               },
             },
           },
+          submission: true,
         },
         orderBy: {
           createdAt: 'desc',
@@ -109,7 +139,9 @@ export const updateConversation = async (
   try {
     const session = req.session;
     const conversationId = req.query.conversationId as string;
-    const updates = ConversationUpdateSchema.parse(req.body);
+    const { status, metadata, isAiEnabled } = ConversationUpdateSchema.parse(
+      req.body
+    );
 
     const conversation = await prisma.conversation.findUnique({
       where: {
@@ -128,6 +160,7 @@ export const updateConversation = async (
         },
       },
     });
+
     if (
       conversation?.agent?.visibility === AgentVisibility.private &&
       conversation?.agent?.organizationId !== session?.organization?.id
@@ -140,7 +173,16 @@ export const updateConversation = async (
         id: conversationId,
       },
       data: {
-        ...updates,
+        status,
+        isAiEnabled,
+        metadata: {
+          ...(metadata
+            ? {
+                ...(conversation?.metadata as Record<string, any>),
+                ...metadata,
+              }
+            : {}),
+        },
       },
       include: {
         lead: true,
@@ -173,86 +215,29 @@ export const updateConversation = async (
 
     if (!isAuthenticatedUser) {
       // Only send notification if action performed by a visitor
+      // DEPRECATED: NOW HANDLED DIRECTLY BY AGENT TOOLS. TODO: REMOVE AFTER MIGRATION
 
       const onwerEmail = updated?.organization?.memberships?.[0]?.user?.email!;
       const leadEmail = updated?.lead?.email!;
       const agent = updated?.agent!;
 
-      if (updates.status === ConversationStatus.RESOLVED) {
-        await mailer.sendMail({
-          from: {
-            name: 'Chaindesk',
-            address: process.env.EMAIL_FROM!,
-          },
-          to: onwerEmail,
-          subject: `✅ Conversation resolved automatically by ${
-            agent?.name || ''
-          }`,
-          html: render(
-            <ConversationResolved
-              agentName={agent.name}
-              messages={updated?.messages}
-              ctaLink={`${
-                process.env.NEXT_PUBLIC_DASHBOARD_URL
-              }/logs?tab=all&conversationId=${encodeURIComponent(
-                conversationId
-              )}&targetOrgId=${encodeURIComponent(updated.organizationId!)}`}
-            />
-          ),
+      if (status === ConversationStatus.RESOLVED) {
+        await EventDispatcher.dispatch({
+          type: 'conversation-resolved',
+          agent: agent,
+          conversation: conversation,
+          messages: updated?.messages,
+          adminEmail: onwerEmail,
         });
-
-        await IntegrationsEventDispatcher.dispatch(
-          [
-            ...((conversation?.agent?.serviceProviders ||
-              []) as ServiceProvider[]),
-          ],
-          {
-            type: AppEventType.MARKED_AS_RESOLVED,
-            payload: {
-              agent: conversation?.agent as Agent,
-              conversation: conversation as Conversation,
-              messages: updated?.messages,
-              visitorEmail: leadEmail,
-            },
-          }
-        );
-      } else if (updates.status === ConversationStatus.HUMAN_REQUESTED) {
-        await mailer.sendMail({
-          from: {
-            name: 'Chaindesk',
-            address: process.env.EMAIL_FROM!,
-          },
-          to: onwerEmail,
-          subject: `❓ Assistance requested from Agent ${agent?.name || ''}`,
-          html: render(
-            <HelpRequest
-              visitorEmail={leadEmail}
-              agentName={agent.name}
-              messages={updated?.messages}
-              ctaLink={`${
-                process.env.NEXT_PUBLIC_DASHBOARD_URL
-              }/logs?tab=human_requested&conversationId=${encodeURIComponent(
-                conversationId
-              )}&targetOrgId=${encodeURIComponent(updated.organizationId!)}`}
-            />
-          ),
+      } else if (status === ConversationStatus.HUMAN_REQUESTED) {
+        await EventDispatcher.dispatch({
+          type: 'human-requested',
+          agent: agent,
+          conversation: conversation,
+          messages: updated?.messages,
+          adminEmail: onwerEmail,
+          customerEmail: leadEmail,
         });
-
-        await IntegrationsEventDispatcher.dispatch(
-          [
-            ...((conversation?.agent?.serviceProviders ||
-              []) as ServiceProvider[]),
-          ],
-          {
-            type: AppEventType.HUMAN_REQUESTED,
-            payload: {
-              agent: conversation?.agent as Agent,
-              conversation: conversation as Conversation,
-              messages: updated?.messages,
-              visitorEmail: leadEmail,
-            },
-          }
-        );
       }
     }
 

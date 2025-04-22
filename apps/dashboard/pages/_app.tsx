@@ -1,6 +1,6 @@
 import '@chaindesk/lib/env';
-import '@app/styles/globals.css';
-import '@app/styles/preflight.css';
+import '@chaindesk/ui/styles/globals.css';
+import '@chaindesk/ui/styles/preflight.css';
 import '@app/styles/nprogress.css';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
@@ -15,18 +15,19 @@ import React, { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 
 import Analytics from '@app/components/Analytics';
-import DashboardThemeProvider from '@app/components/DashboardThemeProvider';
 import DefaultSEOTags from '@app/components/DefaultSEOTags';
 import SynchTailwindColorMode from '@app/components/SynchTailwindColorMode';
+import { NavbarProvider } from '@app/hooks/useNavbar';
 import {
   getProductFromHostname,
   ProductContext,
   ProductType,
 } from '@app/hooks/useProduct';
 import useUTMTracking from '@app/hooks/useUTMTracking';
-import createEmotionCache from '@app/utils/create-emotion-cache';
 
 import { NextPageWithLayout, RouteNames } from '@chaindesk/lib/types';
+import theme from '@chaindesk/ui/themes/dashboard';
+import ThemeProvider from '@chaindesk/ui/themes/provider';
 
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
@@ -62,30 +63,33 @@ export default function App({
   ) {
     return getLayout(
       <ProductContext.Provider value={product}>
-        <SessionProvider>
-          <Analytics>
-            <DefaultSEOTags />
-            <SynchTailwindColorMode />
-            <Component {...pageProps} />
-          </Analytics>
-        </SessionProvider>
+        {/* <SessionProvider> */}
+        <Analytics>
+          <Toaster />
+          <DefaultSEOTags />
+          <SynchTailwindColorMode />
+          <Component {...pageProps} />
+        </Analytics>
+        {/* </SessionProvider> */}
       </ProductContext.Provider>
     );
   }
 
   return (
     <ProductContext.Provider value={product}>
-      <DashboardThemeProvider {...otherProps}>
+      <ThemeProvider {...otherProps} theme={theme}>
         <TopProgressBar />
         <SessionProvider>
           <Analytics>
             <Toaster />
             <DefaultSEOTags />
             <SynchTailwindColorMode />
-            {getLayout(<Component {...pageProps} />)}
+            <NavbarProvider>
+              {getLayout(<Component {...pageProps} />)}
+            </NavbarProvider>
           </Analytics>
         </SessionProvider>
-      </DashboardThemeProvider>
+      </ThemeProvider>
     </ProductContext.Provider>
   );
 }

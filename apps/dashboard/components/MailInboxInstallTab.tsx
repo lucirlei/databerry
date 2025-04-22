@@ -9,8 +9,9 @@ import Stack from '@mui/joy/Stack';
 import Typography from '@mui/joy/Typography';
 import React from 'react';
 
+import CopyButton from '@chaindesk/ui/CopyButton';
+
 import SettingCard from './ui/SettingCard';
-import CopyButton from './CopyButton';
 import MailInboxFormProvider from './MailInboxFormProvider';
 
 type Props = {
@@ -46,7 +47,7 @@ function MailInboxInstallTab({ inboxId }: Props) {
                   </Stack>
                   <FormHelperText>
                     <Link
-                      href="https://www.chaindesk.ai/help/email-inbox"
+                      href="https://docs.chaindesk.ai/email-inbox/get-started"
                       target="_blank"
                     >
                       Full Documentation

@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeftRounded';
 import ChevronRightIcon from '@mui/icons-material/ChevronRightRounded';
+import { Alert, Checkbox } from '@mui/joy';
 import Autocomplete from '@mui/joy/Autocomplete';
 import AutocompleteOption from '@mui/joy/AutocompleteOption';
 import Button from '@mui/joy/Button';
@@ -19,7 +20,6 @@ import { useFormContext } from 'react-hook-form';
 import useSWR from 'swr';
 import { z } from 'zod';
 
-import useStateReducer from '@app/hooks/useStateReducer';
 import type { getServiceProviders } from '@app/pages/api/accounts/service-providers';
 
 import getDrives from '@chaindesk/integrations/google-drive/api/drives';
@@ -30,6 +30,7 @@ import {
   DatasourceSchema,
 } from '@chaindesk/lib/types/models';
 import { DatasourceType, Prisma, ServiceProviderType } from '@chaindesk/prisma';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 import Base from './Base';
 import type { DatasourceFormProps } from './types';
@@ -37,7 +38,7 @@ import type { DatasourceFormProps } from './types';
 type Props = DatasourceFormProps<DatasourceGoogleDrive> & {};
 
 function Nested() {
-  const { control, register, setValue, formState, trigger } =
+  const { control, register, setValue, formState, trigger, watch } =
     useFormContext<DatasourceGoogleDrive>();
 
   const [state, setState] = useStateReducer({
@@ -83,6 +84,11 @@ function Nested() {
     window.open(url, '_blank', 'width=800,height=800');
   };
 
+  const id = watch('id');
+  const hasOptIn = watch('hasOptIn');
+
+  console.log('ID--------->', id);
+  console.log('hasOptIn--------->', hasOptIn);
   return (
     <>
       <Stack gap={2}>
@@ -253,6 +259,16 @@ function Nested() {
               </FormHelperText>
             )}
           </FormControl>
+
+          {!id && (
+            <Alert>
+              <Checkbox
+                sx={{ mt: 2 }}
+                {...register('hasOptIn')}
+                label="I acknowledge and consent to the transfer of subsets of my data to large language model providers as part of the service's functionality and improvement."
+              />
+            </Alert>
+          )}
         </Stack>
       </Stack>
     </>
@@ -264,11 +280,19 @@ export default function GoogleDriveForm(props: Props) {
 
   return (
     <Base
-      schema={DatasourceSchema}
+      schema={DatasourceSchema.refine(
+        (val) => {
+          return (val as any).hasOptIn === true;
+        },
+        {
+          message: 'Please aknowledge the opt-in.',
+        }
+      )}
       {...rest}
       defaultValues={{
         ...props.defaultValues!,
         type: DatasourceType.google_drive_file,
+        hasOptIn: !!props?.defaultValues?.id,
       }}
     >
       {!defaultValues?.id && <Nested />}

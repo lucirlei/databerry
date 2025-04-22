@@ -74,6 +74,7 @@ model User {
   sessions Session[]
 
   picture       String?
+  customPicture String? @map("custom_picture")
   hasOptInEmail Boolean? @default(false) @map("has_opt_in_email")
 
   agents        Agent[]
@@ -379,6 +380,8 @@ model Conversation {
   // Todo: deprecate in favor of visitorID relation
   visitorId String? @map("visitor_id")
 
+  attachments Attachment[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -428,6 +431,8 @@ model Message {
   read Boolean? @default(false)
 
   attachments Attachment[]
+
+  submission FormSubmission?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -653,8 +658,10 @@ model Lead {
 }
 model Form {
   id          String  @id @default(cuid())
-
+  
   name        String
+
+  type        FormType    @default(traditional)
 
   draftConfig Json?
   publishedConfig Json?
@@ -692,6 +699,9 @@ model FormSubmission {
 
   conversationId String?  @map("conversation_id")
   conversation Conversation? @relation(fields: [conversationId], references: [id])
+
+  messageId String?  @map("message_id") @unique
+  message Message? @relation(fields: [messageId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   @@map("form_submissions")
@@ -786,6 +796,8 @@ model Attachment {
   message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   messageId String  @map("message_id")
 
+  conversationId String?  @map("conversation_id")
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
   @@map("attachments")
 }
 
@@ -793,6 +805,8 @@ model Contact {
   id String  @id @default(cuid())
 
   email String?
+  phoneNumber String? @map("phone_number")
+  externalId String? @map("external_id")
 
   firstName String? @map("first_name")
   lastName String? @map("last_name")
@@ -809,10 +823,14 @@ model Contact {
 
   visitors Visitor[]
 
+  metadata Json?
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([email, organizationId], name: "unique_email_for_org")
+  @@unique([phoneNumber, organizationId], name: "unique_phone_number_for_org")
+  @@unique([externalId, organizationId], name: "unique_external_id_for_org")  
   @@map("contacts") 
 }
 
@@ -821,6 +839,8 @@ model Visitor {
 
   contact   Contact?  @relation(fields: [contactId], references: [id])
   contactId String? @map("contact_id")
+
+   metadata Json?
 
   organizationId String?       @map("organization_id")
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -851,6 +871,7 @@ model VerificationCode {
 
 enum LLMTaskOutputType {
   youtube_summary
+  web_page_summary
 }
 
 enum DatastoreVisibility {
@@ -887,12 +908,15 @@ enum DatasourceType {
 }
 
 enum ServiceProviderType {
+  website
+  wordpress
   google_drive
   notion
-  website
   crisp
   slack
   zendesk
+  whatsapp
+  telegram
   // smtp
 }
 
@@ -907,10 +931,14 @@ enum ToolType {
   connector
   agent
   http
+  mark_as_resolved
+  request_human
+  lead_capture
 }
 
 enum SubscriptionPlan {
   level_0
+  level_0_5
   level_1
   level_2
   level_3
@@ -963,6 +991,13 @@ enum ConversationChannel {
   api
   form
   mail
+  whatsapp
+  telegram
+}
+
+enum FormType {
+  conversational
+  traditional
 }
 
 enum AgentModelName {
@@ -972,6 +1007,13 @@ enum AgentModelName {
   gpt_4_32k
   gpt_4_turbo
   gpt_4_turbo_vision
+  gpt_4o
+  claude_3_haiku
+  claude_3_sonnet
+  claude_3_opus
+  mixtral_8x7b
+  mixtral_8x22b
+  dolphin_mixtral_8x7b
 }
 
 enum MessageEval {

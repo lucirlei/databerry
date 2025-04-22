@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { z } from 'zod';
 
 import {
@@ -7,8 +8,10 @@ import {
   ConversationChannel,
   ConversationPriority,
   ConversationStatus,
+  FormType,
   Message,
   MessageEval,
+  Prisma,
   PromptType,
   ServiceProviderType,
   ToolType,
@@ -30,6 +33,51 @@ import {
 } from './document';
 import { AgentInterfaceConfig, DatastoreSchema } from './models';
 import { ChainType } from '.';
+
+export const agentInclude: Prisma.AgentInclude = {
+  organization: {
+    select: {
+      id: true,
+      subscriptions: {
+        select: {
+          id: true,
+          plan: true,
+        },
+        where: {
+          status: {
+            in: ['active'],
+          },
+        },
+      },
+    },
+  },
+  tools: {
+    include: {
+      datastore: {
+        include: {
+          _count: {
+            select: {
+              datasources: {
+                where: {
+                  status: {
+                    in: ['running', 'pending'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      form: true,
+    },
+  },
+};
+
+export type agentInclude = typeof agentInclude;
+
+export type GetAgentResponse = Prisma.AgentGetPayload<{
+  include: agentInclude;
+}>;
 
 export const CreateDatastoreRequestSchema = DatastoreSchema.extend({
   id: z.string().trim().cuid().optional(),
@@ -166,6 +214,21 @@ export const CreateAttachmentSchema = z.object({
 });
 export type CreateAttachmentSchema = z.infer<typeof CreateAttachmentSchema>;
 
+export const CreateContactSchema = z.object({
+  email: z.string().email().optional(),
+  phoneNumber: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  conversationId: z.string().cuid().optional(),
+  userId: z.string().optional(),
+});
+
+export type CreateContactSchema = z.infer<typeof CreateContactSchema>;
+
+export const UpdateContactSchema = CreateContactSchema;
+
+export type UpdateContactSchema = z.infer<typeof UpdateContactSchema>;
+
 export const ChatRequest = ChatModelConfigSchema.extend({
   isDraft: z.boolean().optional().default(false),
   query: z.string(),
@@ -175,6 +238,7 @@ export const ChatRequest = ChatModelConfigSchema.extend({
   conversationId: z.union([z.string().cuid().nullish(), z.literal('')]),
   channel: z.nativeEnum(ConversationChannel).default('dashboard'),
   truncateQuery: z.boolean().optional(),
+  context: z.string().optional(),
 
   systemPrompt: z.string().optional(),
   userPrompt: z.string().optional(),
@@ -188,6 +252,11 @@ export const ChatRequest = ChatModelConfigSchema.extend({
   formId: z.union([z.string().cuid().nullish(), z.literal('')]),
 
   attachments: z.array(CreateAttachmentSchema).optional(),
+
+  contact: CreateContactSchema.optional(),
+  attachmentsForAI: z.array(z.string().cuid()).optional(),
+
+  images: z.array(z.string().url()).optional(),
 
   //  DEPRECATED
   promptTemplate: z.string().optional(),
@@ -217,14 +286,93 @@ export const ServiceProviderZendeskSchema = ServiceProviderBaseSchema.extend({
   }),
 });
 
+export const ServiceProvideTelegramSchema = ServiceProviderBaseSchema.extend({
+  type: z.literal(ServiceProviderType.telegram),
+  config: z.object({
+    http_token: z.string().superRefine(async (arg, ctx) => {
+      const invalidTokenFormatIssue = {
+        code: 'custom',
+        message: 'Invalid Token Format',
+      } as const;
+      const unRecognizedTokenIssue = {
+        code: 'custom',
+        message: 'Http token is not a recognized  telegram token.',
+      } as const;
+
+      // /^\d+:[\w-]+$/: numeric-part:alphanumeric-part
+      if (!/^\d+:[\w-]+$/.test(arg)) {
+        return ctx.addIssue(invalidTokenFormatIssue);
+      }
+
+      try {
+        const { data: response } = await axios.post(
+          `${process.env.NEXT_PUBLIC_DASHBOARD_URL}/api/tools/http-tool/validator`,
+          {
+            url: `https://api.telegram.org/bot${arg}/getMe`,
+            method: 'POST',
+          }
+        );
+        if (!response.data.ok) {
+          return ctx.addIssue(unRecognizedTokenIssue);
+        }
+      } catch {
+        return ctx.addIssue(unRecognizedTokenIssue);
+      }
+    }),
+    secret_key: z.string().cuid().optional(), // set by chaindesk, to validate webhook calls.
+  }),
+});
+
+export type ServiceProvideTelegramSchema = z.infer<
+  typeof ServiceProvideTelegramSchema
+>;
+
+export const ServiceProviderWhatsappSchema = ServiceProviderBaseSchema.extend({
+  type: z.literal(ServiceProviderType.whatsapp),
+  accessToken: z.string().min(1),
+  config: z.object({
+    appId: z.string().min(1),
+    phoneNumberId: z.string().min(1),
+    phoneNumber: z.string().min(1),
+    webhookVerifyToken: z.string().optional(),
+  }),
+});
+
+export type ServiceProviderWhatsappSchema = z.infer<
+  typeof ServiceProviderWhatsappSchema
+>;
+
 export const ServiceProviderSchema = z.discriminatedUnion('type', [
   ServiceProviderZendeskSchema,
+  ServiceProviderWhatsappSchema,
 ]);
+
+export const AddServiceProviderTelegramSchema =
+  ServiceProvideTelegramSchema.extend({
+    agentId: z.string().cuid(),
+  });
+
+export type AddServiceProviderTelegramSchema = z.infer<
+  typeof AddServiceProviderTelegramSchema
+>;
+
+export const AddServiceProviderWhatsappSchema =
+  ServiceProviderWhatsappSchema.extend({
+    agentId: z.string().cuid(),
+  });
+
+export type AddServiceProviderWhatsappSchema = z.infer<
+  typeof AddServiceProviderWhatsappSchema
+>;
 
 export type ServiceProviderSchema = z.infer<typeof ServiceProviderSchema>;
 export type ServiceProviderZendesk = Extract<
   ServiceProviderSchema,
   { type: 'zendesk' }
+>;
+export type ServiceProviderWhatsapp = Extract<
+  ServiceProviderSchema,
+  { type: 'whatsapp' }
 >;
 
 const ToolBaseSchema = z.object({
@@ -250,8 +398,9 @@ const ToolKeyValueField = z
     key: z.string().min(1),
     value: z.string().optional(),
     isUserProvided: z.boolean().optional(),
+    description: z.string().optional(),
+    acceptedValues: z.array(z.string().optional()).optional(),
   })
-
   .refine(
     (val) => {
       if (!val.isUserProvided && !val.value) {
@@ -276,15 +425,29 @@ export const HttpToolSchema = ToolBaseSchema.extend({
     headers: z.array(ToolKeyValueField).optional(),
     body: z.array(ToolKeyValueField).optional(),
     queryParameters: z.array(ToolKeyValueField).optional(),
+    pathVariables: z.array(ToolKeyValueField).optional(),
+  }),
+});
+
+export const LeadCaptureToolchema = ToolBaseSchema.extend({
+  type: z.literal(ToolType.lead_capture),
+  config: z.object({
+    email: z.string().email().optional(),
+    phoneNumber: z.string().optional(),
+    phoneNumberExtension: z.string().optional(),
+    isRequired: z.boolean().optional(),
+    isEmailEnabled: z.boolean().optional(),
+    isPhoneNumberEnabled: z.boolean().optional(),
   }),
 });
 
 export const ToolSchema = z.discriminatedUnion('type', [
+  HttpToolSchema,
+  LeadCaptureToolchema,
   ToolBaseSchema.extend({
     type: z.literal(ToolType.datastore),
     datastoreId: z.string().cuid().optional(),
   }),
-  HttpToolSchema,
   ToolBaseSchema.extend({
     type: z.literal(ToolType.connector),
     config: z.any({}),
@@ -296,13 +459,36 @@ export const ToolSchema = z.discriminatedUnion('type', [
   ToolBaseSchema.extend({
     type: z.literal(ToolType.form),
     formId: z.string().cuid(),
+    config: z.any({}).optional(),
+  }),
+  ToolBaseSchema.extend({
+    type: z.literal(ToolType.mark_as_resolved),
+  }),
+  ToolBaseSchema.extend({
+    type: z.literal(ToolType.request_human),
   }),
 ]);
 
 export type ToolSchema = z.infer<typeof ToolSchema>;
 
 export type HttpToolSchema = Extract<ToolSchema, { type: 'http' }>;
+export type LeadCaptureToolchema = Extract<
+  ToolSchema,
+  { type: 'lead_capture' }
+>;
 export type FormToolSchema = Extract<ToolSchema, { type: 'form' }>;
+export type MarkAsResolvedToolSchema = Extract<
+  ToolSchema,
+  { type: 'mark_as_resolved' }
+>;
+export type RequestHumanToolSchema = Extract<
+  ToolSchema,
+  { type: 'request_human' }
+>;
+export type LeadCaptureToolSchema = Extract<
+  ToolSchema,
+  { type: 'lead_capture' }
+>;
 
 export const CreateAgentSchema = z.object({
   id: z.string().trim().cuid().optional(),
@@ -405,6 +591,7 @@ export type OrganizationInviteSchema = z.infer<typeof OrganizationInviteSchema>;
 export const UpdateUserProfileSchema = z.object({
   email: z.string().email(),
   name: z.string().trim().min(1).max(50),
+  customPicture: z.union([z.string().url().nullish(), z.literal('')]),
   // iconUrl: z.union([
   //   z
   //     .string()
@@ -427,9 +614,11 @@ export const CrispUpdateMetadataSchema = CrispSchema.extend({
   aiStatus: z.nativeEnum(AIStatus),
 });
 
+// TODO: move to -> createConversationSchema.partial()
 export const ConversationUpdateSchema = z.object({
   status: z.nativeEnum(ConversationStatus).optional(),
   isAiEnabled: z.boolean().optional(),
+  metadata: z.object({ isFormSubmitted: z.boolean() }).optional(),
 });
 
 export const YoutubeSummarySchema = z.object({
@@ -441,6 +630,12 @@ export const YoutubeSummarySchema = z.object({
       message: 'Invalid YouTube video URL',
     }
   ),
+  date: z.string().optional(),
+});
+
+export const WebPageSummarySchema = z.object({
+  url: z.string().url(),
+  date: z.string().optional(),
 });
 
 export const ChatResponse = z.object({
@@ -448,7 +643,7 @@ export const ChatResponse = z.object({
   sources: z.array(Source).optional(),
   conversationId: z.string().cuid(),
   visitorId: z.string().optional(),
-  messageId: z.string().cuid(),
+  messageId: z.string().cuid().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   usage: z
     .object({
@@ -487,9 +682,17 @@ export const FormFieldBaseSchema = z.object({
   required: z.boolean().default(true),
   name: z.string().toLowerCase().trim().min(3),
 });
+
 export const FormFieldSchema = z.discriminatedUnion('type', [
   FormFieldBaseSchema.extend({
     type: z.literal('text'),
+    placeholder: z.string().optional(),
+  }),
+  FormFieldBaseSchema.extend({
+    type: z.literal('number'),
+    placeholder: z.string().optional(),
+    min: z.coerce.number().default(0).optional(),
+    max: z.coerce.number().default(42).optional(),
   }),
   FormFieldBaseSchema.extend({
     type: z.literal('multiple_choice'),
@@ -498,9 +701,37 @@ export const FormFieldSchema = z.discriminatedUnion('type', [
   FormFieldBaseSchema.extend({
     type: z.literal('file'),
     fileUrl: z.string().optional(),
+    placeholder: z.string().optional(),
+  }),
+  FormFieldBaseSchema.extend({
+    type: z.literal('email'),
+    placeholder: z.string().optional(),
+    shouldCreateContact: z.boolean().default(true).optional(),
+  }),
+  FormFieldBaseSchema.extend({
+    type: z.literal('phoneNumber'),
+    placeholder: z.string().optional(),
+    defaultCountryCode: z.string().optional(),
+    shouldCreateContact: z.boolean().default(true).optional(),
+  }),
+  FormFieldBaseSchema.extend({
+    type: z.literal('textArea'),
+    placeholder: z.string().optional(),
+  }),
+  FormFieldBaseSchema.extend({
+    type: z.literal('select'),
+    options: z.array(z.string().min(1)).min(1),
+    placeholder: z.string().optional(),
   }),
 ]);
+
 export type FormFieldSchema = z.infer<typeof FormFieldSchema>;
+
+// keep sync with FormFieldSchema.
+export type TextField = Exclude<
+  FormFieldSchema,
+  { type: 'multiple_choice' } | { type: 'file' } | { type: 'select' }
+>;
 
 export const FormConfigSchema = z.object({
   overview: z.string().max(750).optional().nullable(),
@@ -521,9 +752,11 @@ export const FormConfigSchema = z.object({
     .object({
       title: z.string().max(50),
       description: z.string().max(250),
-      cta: z.object({
-        label: z.string(),
-      }),
+      cta: z
+        .object({
+          label: z.string(),
+        })
+        .optional(),
     })
     .optional(),
   endScreen: z
@@ -533,6 +766,7 @@ export const FormConfigSchema = z.object({
         url: z.union([z.string().url().nullish(), z.literal('')]),
         target: z.string().optional(),
       }),
+      successMessage: z.string().optional(),
     })
     .optional(),
   webhook: z
@@ -546,6 +780,7 @@ export type FormConfigSchema = z.infer<typeof FormConfigSchema>;
 
 export const CreateFormSchema = z.object({
   id: z.string().optional(),
+  type: z.nativeEnum(FormType).optional(),
   name: z.string().optional(),
   datastoreId: z.string().optional().nullable(),
   draftConfig: FormConfigSchema,
@@ -558,6 +793,7 @@ export type UpdateFormSchema = z.infer<typeof UpdateFormSchema>;
 
 export const ToolResponseSchema = z.object({
   data: z.any(),
+  messageId: z.string().cuid().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   approvalRequired: z.boolean().optional(),
   error: z.string().optional(),
@@ -606,6 +842,15 @@ export const GenerateUploadLinkRequestSchema = z.discriminatedUnion('case', [
     case: z.literal('chatUpload'),
     conversationId: z.string().cuid(),
     agentId: z.string().cuid().optional(),
+    fileName: z.string(),
+    mimeType: AcceptedDocumentMimeTypesSchema.or(AcceptedAudioMimeTypesSchema)
+      .or(AcceptedVideoMimeTypesSchema)
+      .or(AcceptedImageMimeTypesSchema),
+  }),
+  z.object({
+    case: z.literal('formUpload'),
+    formId: z.string().cuid(),
+    conversationId: z.string().cuid().optional(),
     fileName: z.string(),
     mimeType: AcceptedDocumentMimeTypesSchema.or(AcceptedAudioMimeTypesSchema)
       .or(AcceptedVideoMimeTypesSchema)
@@ -688,15 +933,226 @@ export type UpdateInboxConversationSchema = z.infer<
   typeof UpdateInboxConversationSchema
 >;
 
-export const CreateContactSchema = z.object({
-  email: z.string().email().optional(),
-  firtName: z.string().optional(),
-  lastName: z.string().optional(),
-  conversationId: z.string().cuid().optional(),
+const AppEventBaseSchema = z.object({
+  // organizationId: z.string().cuid(),
 });
 
-export type CreateContactSchema = z.infer<typeof CreateContactSchema>;
+export const FormSubmitSchema = AppEventBaseSchema.extend({
+  formId: z.string().cuid(),
+  formValues: z.record(z.string(), z.unknown()),
+  conversationId: z.string().cuid().optional(),
+  messageId: z.string().cuid().optional(),
+  submissionId: z.string().cuid().optional().nullable(),
+});
 
-export const UpdateContactSchema = CreateContactSchema;
+export type FormSubmitSchema = z.infer<typeof FormSubmitSchema>;
 
-export type UpdateContactSchema = z.infer<typeof UpdateContactSchema>;
+export const AppEventSchema = z.discriminatedUnion('type', [
+  AppEventBaseSchema.extend({
+    type: z.literal('tool-approval-requested'),
+    conversationId: z.string().cuid(),
+    approvals: ChatResponse.shape.approvals,
+    agentName: z.string(),
+  }),
+  AppEventBaseSchema.extend({
+    type: z.literal('conversation-resolved'),
+    agent: z.any(),
+    conversation: z.any(),
+    messages: z.array(z.any()),
+    adminEmail: z.string(),
+    customerEmail: z.string().optional(),
+  }),
+  AppEventBaseSchema.extend({
+    type: z.literal('human-requested'),
+    agent: z.any(),
+    conversation: z.any(),
+    messages: z.array(z.any()),
+    adminEmail: z.string(),
+    customerEmail: z.string().optional(),
+  }),
+  AppEventBaseSchema.extend({
+    type: z.literal('lead-captured'),
+    agent: z.any(),
+    conversation: z.any(),
+    messages: z.array(z.any()),
+    adminEmail: z.string(),
+    customerEmail: z.string().optional(),
+  }),
+]);
+export type AppEventSchema = z.infer<typeof AppEventSchema>;
+
+export const AppeEventHandlerSchema = z.object({
+  event: AppEventSchema,
+  token: z.string().min(1),
+});
+
+export type AppeEventHandlerSchema = z.infer<typeof AppeEventHandlerSchema>;
+
+const WhatsAppActionSchema = z.object({
+  buttons: z.array(
+    z.object({
+      type: z.literal('reply'),
+      reply: z.object({ id: z.string(), title: z.string() }),
+    })
+  ),
+});
+
+const WhatsAppMediaSchema = z.object({
+  link: z.string(),
+});
+
+const WhatsAppHeaderSchema = z
+  .object({
+    type: z.literal('image'),
+    image: WhatsAppMediaSchema,
+  })
+  .or(
+    z.object({
+      type: z.literal('video'),
+      video: WhatsAppMediaSchema,
+    })
+  )
+  .or(
+    z.object({
+      type: z.literal('text'),
+      text: z.string(),
+    })
+  );
+
+const WhatsAppBodySchema = z.object({
+  text: z.string(),
+});
+
+const WhatsAppTemplateSchema = z.object({
+  name: z.string(),
+  language: z.object({
+    code: z.string(),
+  }),
+});
+
+const interactiveSchema = z.object({
+  type: z.literal('button'),
+  header: WhatsAppHeaderSchema.optional(),
+  body: WhatsAppBodySchema.optional(),
+  action: WhatsAppActionSchema,
+});
+
+const WhatsAppSendMessageBaseSchema = z.object({
+  // id: z.string(),
+  // from: z.string(),
+  // timestamp: z.string(),
+});
+
+export const WhatsAppSendMessageSchema = z.discriminatedUnion('type', [
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('text'),
+    text: z.object({
+      body: z.string(),
+      preview_url: z.boolean().optional(),
+    }),
+    preview_url: z.boolean().optional(),
+  }),
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('image'),
+    image: WhatsAppMediaSchema,
+  }),
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('audio'),
+    audio: WhatsAppMediaSchema,
+  }),
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('video'),
+    video: WhatsAppMediaSchema,
+  }),
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('document'),
+    document: WhatsAppMediaSchema,
+  }),
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('interactive'),
+    interactive: interactiveSchema,
+  }),
+  WhatsAppSendMessageBaseSchema.extend({
+    type: z.literal('template'),
+    template: WhatsAppTemplateSchema,
+  }),
+]);
+
+export type WhatsAppSendMessageSchema = z.infer<
+  typeof WhatsAppSendMessageSchema
+>;
+export type WhatsAppSendMessageTextSchema = Extract<
+  WhatsAppSendMessageSchema,
+  { type: 'text' }
+>;
+
+export type WhatsAppSendMessageMediaSchema = Extract<
+  WhatsAppSendMessageSchema,
+  { type: 'image' | 'audio' | 'video' | 'document' }
+>;
+
+const WhatsAppReceivedMessageBaseSchema = z.object({
+  from: z.string(),
+  id: z.string(),
+  timestamp: z.string(),
+});
+
+const WhatsAppReceivedMediaSchema = z.object({
+  caption: z.string().optional(),
+  mime_type: z.string(),
+  sha256: z.string(),
+  id: z.string(),
+});
+
+export const WhatsAppReceivedMessageSchema = z.discriminatedUnion('type', [
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('text'),
+    text: z.object({
+      body: z.string(),
+    }),
+  }),
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('image'),
+    image: WhatsAppReceivedMediaSchema,
+  }),
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('audio'),
+    audio: WhatsAppReceivedMediaSchema,
+  }),
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('video'),
+    video: WhatsAppReceivedMediaSchema,
+  }),
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('document'),
+    document: WhatsAppReceivedMediaSchema,
+  }),
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('interactive'),
+    interactive: interactiveSchema,
+  }),
+  WhatsAppReceivedMessageBaseSchema.extend({
+    type: z.literal('template'),
+    template: WhatsAppTemplateSchema,
+  }),
+]);
+
+export type WhatsAppReceivedMessageSchema = z.infer<
+  typeof WhatsAppReceivedMessageSchema
+>;
+
+export type WhatsAppReceivedMessageTextSchema = Extract<
+  WhatsAppReceivedMessageSchema,
+  { type: 'text' }
+>;
+
+export type WhatsAppReceivedMessageMediaSchema = Extract<
+  WhatsAppReceivedMessageSchema,
+  { type: 'image' | 'audio' | 'video' | 'document' }
+>;
+
+export const LeadFormSchema = z.object({
+  email: z.string().email(),
+  phoneNumber: z.string().min(1),
+});
+export type LeadFormSchema = z.infer<typeof LeadFormSchema>;

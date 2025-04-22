@@ -33,38 +33,30 @@ export const getConversations = async (
 
   const conversations = await prisma.conversation.findMany({
     where: {
-      AND: [
-        {
-          organizationId: session.organization.id,
-          // userId: session?.user?.id,
-          participantsUsers: {
-            some: {
-              id: session?.user?.id,
-            },
-          },
+      channel: 'dashboard',
+      userId: session?.user?.id,
+      organizationId: session.organization.id,
+      participantsUsers: {
+        some: {
+          id: session?.user?.id,
         },
-        // ...(agentId && agentId !== 'null' ? [{ agentId }] : []),
-        ...(agentId && agentId !== 'null'
-          ? [
-              {
-                participantsAgents: {
-                  some: {
-                    id: agentId,
-                  },
-                },
+      },
+      ...(agentId && agentId !== 'null'
+        ? {
+            participantsAgents: {
+              some: {
+                id: agentId,
               },
-            ]
-          : []),
-        ...(agentId === 'null'
-          ? [
-              {
-                agent: {
-                  is: null,
-                },
-              },
-            ]
-          : []),
-      ],
+            },
+          }
+        : {}),
+      ...(agentId === 'null'
+        ? {
+            agent: {
+              is: null,
+            },
+          }
+        : {}),
     },
     take: 20,
     orderBy: {
@@ -80,11 +72,12 @@ export const getConversations = async (
       : {}),
     include: {
       agent: true,
-      _count: {
-        select: {
-          messages: true,
-        },
-      },
+      // Disabled because very slow in prod (find out why as /api/logs works as expected)
+      // _count: {
+      //   select: {
+      //     messages: true,
+      //   },
+      // },
 
       messages: {
         take: 1,

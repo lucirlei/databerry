@@ -1,25 +1,30 @@
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import MessageRoundedIcon from '@mui/icons-material/MessageRounded';
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SpokeRoundedIcon from '@mui/icons-material/SpokeRounded';
-import { CircularProgress, ColorPaletteProp, IconButton } from '@mui/joy';
+import {
+  Alert,
+  Breadcrumbs,
+  CircularProgress,
+  ColorPaletteProp,
+} from '@mui/joy';
 import Box from '@mui/joy/Box';
-import Breadcrumbs from '@mui/joy/Breadcrumbs';
 import Button from '@mui/joy/Button';
 import Card from '@mui/joy/Card';
 import Chip from '@mui/joy/Chip';
+import IconButton from '@mui/joy/IconButton';
 import ListItemDecorator from '@mui/joy/ListItemDecorator';
 import Stack from '@mui/joy/Stack';
 import Tab, { tabClasses } from '@mui/joy/Tab';
 import TabList from '@mui/joy/TabList';
 import Tabs from '@mui/joy/Tabs';
 import Typography from '@mui/joy/Typography';
-import dynamic from 'next/dynamic';
+import { AgentModelName } from '@prisma/client';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { GetServerSidePropsContext } from 'next/types';
 import { useSession } from 'next-auth/react';
 import { ReactElement } from 'react';
 import * as React from 'react';
@@ -28,19 +33,23 @@ import AgentDeployTab from '@app/components/AgentDeployTab';
 import AgentForm from '@app/components/AgentForm';
 import HttpToolInput from '@app/components/AgentInputs/HttpToolInput';
 import AgentSettingsTab from '@app/components/AgentSettingsTab';
-import ChatBox from '@app/components/ChatBox';
 import ChatSection from '@app/components/ChatSection';
-import ConversationList from '@app/components/ConversationList';
 import Layout from '@app/components/Layout';
-import Loader from '@app/components/Loader';
+import LeadCaptureToolFormInput from '@app/components/LeadCaptureToolForm/LeadCaptureToolFormInput';
 import UsageLimitModal from '@app/components/UsageLimitModal';
-import useAgent from '@app/hooks/useAgent';
-import useChat from '@app/hooks/useChat';
 import useModal from '@app/hooks/useModal';
-import useStateReducer from '@app/hooks/useStateReducer';
 
+import agentToolFormat, {
+  agentToolConfig,
+} from '@chaindesk/lib/agent-tool-format';
+import { ModelConfig } from '@chaindesk/lib/config';
 import { RouteNames } from '@chaindesk/lib/types';
-import { withAuth } from '@chaindesk/lib/withAuth';
+import { Tool } from '@chaindesk/prisma';
+import Actions from '@chaindesk/ui/Chatbox/Actions';
+import useAgent from '@chaindesk/ui/hooks/useAgent';
+import useChat, { ChatContext } from '@chaindesk/ui/hooks/useChat';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
+import Loader from '@chaindesk/ui/Loader';
 
 export default function AgentPage() {
   const router = useRouter();
@@ -55,6 +64,28 @@ export default function AgentPage() {
     id: router.query?.agentId as string,
   });
 
+  const methods = useChat({
+    channel: 'dashboard',
+    endpoint: router.query?.agentId
+      ? `/api/agents/${router.query?.agentId}/query`
+      : undefined,
+  });
+
+  const hasMarkAsResolvedTool = React.useMemo(
+    () =>
+      !!((query.data as any)?.tools as Tool[])?.find(
+        (one) => one?.type === 'mark_as_resolved'
+      ),
+    [query.data]
+  );
+  const hasRequestHumanTool = React.useMemo(
+    () =>
+      !!((query.data as any)?.tools as Tool[])?.find(
+        (one) => one?.type === 'request_human'
+      ),
+    [query.data]
+  );
+
   const {
     history,
     handleChatSubmit,
@@ -66,25 +97,26 @@ export default function AgentPage() {
     handleEvalAnswer,
     handleAbort,
     refreshConversation,
-  } = useChat({
-    endpoint: router.query?.agentId
-      ? `/api/agents/${router.query?.agentId}/query`
-      : undefined,
-  });
+    isStreaming,
+    conversationAttachments,
+  } = methods;
 
   const handleChangeTab = (tab: string) => {
     router.query.tab = tab;
     router.replace(router);
   };
 
-  const editApiToolForm = useModal();
+  const editApiToolModal = useModal();
+  const editLeadToolModal = useModal();
 
   const handleSelectConversation = (conversationId: string) => {
     setConversationId(conversationId);
     router.query.conversationId = conversationId || '';
     router.replace(router, undefined, { shallow: true });
   };
+
   const handleCreateNewChat = () => {
+    handleAbort?.();
     setConversationId('');
     router.query.conversationId = '';
     router.replace(router, undefined, {
@@ -106,20 +138,6 @@ export default function AgentPage() {
       component="main"
       className="MainContent"
       sx={(theme) => ({
-        px: {
-          xs: 2,
-          md: 6,
-        },
-        pt: {
-          // xs: `calc(${theme.spacing(2)} + var(--Header-height))`,
-          // sm: `calc(${theme.spacing(2)} + var(--Header-height))`,
-          // md: 3,
-        },
-        // pb: {
-        //   xs: 2,
-        //   sm: 2,
-        //   md: 3,
-        // },
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -128,57 +146,17 @@ export default function AgentPage() {
         maxHeight: '100%',
         overflow: 'hidden',
         width: '100%',
-        // ...(router.query.tab === 'chat'
-        //   ? {
-        //       height: '100%',
-        //     }
-        //   : {}),
         gap: 1,
       })}
     >
       <>
-        <Breadcrumbs
-          size="sm"
-          aria-label="breadcrumbs"
-          separator={<ChevronRightRoundedIcon />}
-          sx={{
-            '--Breadcrumbs-gap': '1rem',
-            '--Icon-fontSize': '16px',
-            fontWeight: 'lg',
-            color: 'neutral.400',
-            px: 0,
-          }}
-        >
-          <Link href={RouteNames.HOME}>
-            <HomeRoundedIcon />
-          </Link>
-          <Link href={RouteNames.AGENTS}>
-            <Typography
-              fontSize="inherit"
-              color="neutral"
-              className="hover:underline"
-            >
-              Agents
-            </Typography>
-          </Link>
-
-          <Typography fontSize="inherit" color="neutral">
-            {query?.data?.name}
-          </Typography>
-        </Breadcrumbs>
-
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            mt: 1,
             mb: 2,
             gap: 1,
             flexWrap: 'wrap',
-            // '& > *': {
-            //   minWidth: 'clamp(0px, (500px - 100%) * 999, 100%)',
-            //   flexGrow: 1,
-            // },
           }}
         >
           <Stack
@@ -187,10 +165,40 @@ export default function AgentPage() {
               width: '100%',
             }}
           >
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-              <Typography level="h1" fontSize="xl4">
-                {query?.data?.name}
-              </Typography>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+              <Breadcrumbs
+                size="sm"
+                aria-label="breadcrumbs"
+                separator={<ChevronRightRoundedIcon />}
+                sx={{
+                  '--Breadcrumbs-gap': '1rem',
+                  '--Icon-fontSize': '16px',
+                  fontWeight: 'lg',
+                  color: 'neutral.400',
+                  px: 0,
+                }}
+              >
+                <Link href={RouteNames.HOME}>
+                  <HomeRoundedIcon />
+                </Link>
+                <Link href={RouteNames.AGENTS}>
+                  <Typography
+                    fontSize="inherit"
+                    color="neutral"
+                    className="hover:underline"
+                  >
+                    Agents
+                  </Typography>
+                </Link>
+                <Typography
+                  fontSize="inherit"
+                  color="neutral"
+                  className="hover:underline"
+                >
+                  {query?.data?.name}
+                </Typography>
+              </Breadcrumbs>
+
               <Chip
                 size="sm"
                 variant="soft"
@@ -228,9 +236,6 @@ export default function AgentPage() {
                 value={(router.query.tab as string) || 'chat'}
                 size="md"
                 sx={{
-                  // borderRadius: 'lg',
-                  // display: 'inline-flex',
-                  //   mt: 4,
                   bgcolor: 'transparent',
                   width: '100%',
                 }}
@@ -240,21 +245,7 @@ export default function AgentPage() {
               >
                 <TabList
                   size="sm"
-                  // disableUnderline={true}
-                  // sx={{
-                  //   p: 0.5,
-                  //   gap: 0.5,
-                  //   borderRadius: 'xl',
-                  //   bgcolor: 'background.level1',
-                  //   [`& .${tabClasses.root}[aria-selected="true"]`]: {
-                  //     boxShadow: 'sm',
-                  //     bgcolor: 'background.surface',
-                  //   },
-                  // }}
-
                   sx={{
-                    // pt: 2,
-                    // justifyContent: 'center',
                     [`&& .${tabClasses.root}`]: {
                       flex: 'initial',
                       bgcolor: 'transparent',
@@ -318,26 +309,39 @@ export default function AgentPage() {
               }}
               gap={1}
             >
-              <ChatSection
-                agentId={agentId}
-                organizationId={query?.data?.organizationId}
-                handleSelectConversation={handleSelectConversation}
-                currentConversationId={conversationId}
-                handleCreateNewChat={handleCreateNewChat}
-                disableWatermark
-                messages={history}
-                onSubmit={handleChatSubmit}
-                agentIconUrl={query?.data?.iconUrl!}
-                isLoadingConversation={isLoadingConversation}
-                hasMoreMessages={hasMoreMessages}
-                handleLoadMoreMessages={handleLoadMoreMessages}
-                handleEvalAnswer={handleEvalAnswer}
-                handleAbort={handleAbort}
-                userImgUrl={session?.user?.image!}
-                refreshConversation={refreshConversation}
-                withSources={!!query?.data?.includeSources}
-                autoFocus
-              />
+              <ChatContext.Provider value={methods}>
+                <ChatSection
+                  agentId={agentId}
+                  organizationId={query?.data?.organizationId}
+                  handleSelectConversation={handleSelectConversation}
+                  currentConversationId={conversationId}
+                  handleCreateNewChat={handleCreateNewChat}
+                  disableWatermark
+                  messages={history}
+                  onSubmit={handleChatSubmit}
+                  agentIconUrl={query?.data?.iconUrl!}
+                  isLoadingConversation={isLoadingConversation}
+                  hasMoreMessages={hasMoreMessages}
+                  handleLoadMoreMessages={handleLoadMoreMessages}
+                  handleEvalAnswer={handleEvalAnswer}
+                  handleAbort={handleAbort}
+                  userImgUrl={session?.user?.image!}
+                  refreshConversation={refreshConversation}
+                  withSources={!!query?.data?.includeSources}
+                  autoFocus
+                  isStreaming={isStreaming}
+                  withFileUpload
+                  conversationAttachments={conversationAttachments}
+                  isAiEnabled
+                  fromDashboard
+                  actions={
+                    <Actions
+                      withHumanRequested={hasRequestHumanTool}
+                      withMarkAsResolved={hasMarkAsResolvedTool}
+                    />
+                  }
+                />
+              </ChatContext.Provider>
 
               {(query?.data?.tools?.length || 0) > 0 && (
                 <Box
@@ -388,7 +392,28 @@ export default function AgentPage() {
                   <Stack gap={1}>
                     {query?.data?.tools?.map((tool, index) => (
                       <>
-                        <Card key={tool.id} variant="outlined" size="sm">
+                        <Card
+                          key={tool.id}
+                          variant="outlined"
+                          size="sm"
+                          color={(() => {
+                            switch (tool.type) {
+                              case 'lead_capture':
+                                return 'warning';
+                              case 'http':
+                              // case 'mark_as_resolved':
+                              case 'form':
+                                // case 'request_human':
+                                return ModelConfig[
+                                  query?.data?.modelName as AgentModelName
+                                ].isToolCallingSupported
+                                  ? 'success'
+                                  : 'warning';
+                              default:
+                                return 'success';
+                            }
+                          })()}
+                        >
                           <Stack
                             direction="row"
                             sx={{
@@ -404,7 +429,14 @@ export default function AgentPage() {
                                       setState({
                                         currentToolIndex: index,
                                       });
-                                      editApiToolForm.open();
+                                      editApiToolModal.open();
+                                    }
+                                  : tool.type === 'lead_capture'
+                                  ? () => {
+                                      setState({
+                                        currentToolIndex: index,
+                                      });
+                                      editLeadToolModal.open();
                                     }
                                   : undefined
                               }
@@ -421,13 +453,19 @@ export default function AgentPage() {
                               className="truncate"
                             >
                               <Typography
-                                sx={{ textDecoration: 'underline' }}
+                                sx={{
+                                  textDecoration: [
+                                    'http',
+                                    'datastore',
+                                    'lead_capture',
+                                  ].includes(tool.type)
+                                    ? 'underline'
+                                    : 'none',
+                                }}
                                 className="max-w-full truncate"
                                 level="body-sm"
                               >
-                                {(tool as any)?.datastore?.name ||
-                                  (tool as any)?.form?.name ||
-                                  (tool as any)?.config?.name ||
+                                {agentToolFormat(tool as any)?.name ||
                                   tool?.type}
                               </Typography>
                             </Link>
@@ -436,7 +474,42 @@ export default function AgentPage() {
                             direction="row"
                             sx={{ justifyContent: 'space-between' }}
                           >
-                            <Chip size="sm">{tool?.type}</Chip>
+                            <Stack gap={1}>
+                              <Chip size="sm">{tool?.type}</Chip>
+                              {tool.type === 'lead_capture' && (
+                                <Alert
+                                  size="sm"
+                                  color="warning"
+                                  startDecorator={
+                                    <InfoRoundedIcon sx={{ fontSize: 'sm' }} />
+                                  }
+                                >
+                                  enabled on bubble/standard widgets only
+                                </Alert>
+                              )}
+
+                              {[
+                                'http',
+                                // 'mark_as_resolved',
+                                'form',
+                                // 'request_human',
+                              ].includes(tool.type) &&
+                                !ModelConfig[
+                                  query?.data?.modelName as AgentModelName
+                                ].isToolCallingSupported && (
+                                  <Alert
+                                    size="sm"
+                                    color="warning"
+                                    startDecorator={
+                                      <InfoRoundedIcon
+                                        sx={{ fontSize: 'sm' }}
+                                      />
+                                    }
+                                  >
+                                    model not compatible
+                                  </Alert>
+                                )}
+                            </Stack>
 
                             {(tool as any)?.datastore?._count?.datasources >
                               0 && (
@@ -472,7 +545,7 @@ export default function AgentPage() {
               )}
             </Stack>
 
-            <editApiToolForm.component
+            <editApiToolModal.component
               title="HTTP Tool"
               description="Let your Agent call an HTTP endpoint."
               dialogProps={{
@@ -487,13 +560,42 @@ export default function AgentPage() {
                   agentId={agentId}
                   refreshQueryAfterMutation
                   onSubmitSucces={(agent) => {
-                    editApiToolForm.close();
+                    editApiToolModal.close();
                   }}
                 >
                   {({ mutation }) => (
                     <Stack gap={2}>
-                      <HttpToolInput
-                        name={`tools.${state.currentToolIndex}` as `tools.0`}
+                      <HttpToolInput name={`tools.${state.currentToolIndex}`} />
+                      <Button type="submit" loading={mutation.isMutating}>
+                        Update
+                      </Button>
+                    </Stack>
+                  )}
+                </AgentForm>
+              )}
+            </editApiToolModal.component>
+            <editLeadToolModal.component
+              title={agentToolConfig.lead_capture.title}
+              description={agentToolConfig.lead_capture.description}
+              dialogProps={{
+                sx: {
+                  maxWidth: 'md',
+                  height: 'auto',
+                },
+              }}
+            >
+              {state.currentToolIndex >= 0 && (
+                <AgentForm
+                  agentId={agentId}
+                  refreshQueryAfterMutation
+                  onSubmitSucces={(agent) => {
+                    editLeadToolModal.close();
+                  }}
+                >
+                  {({ mutation }) => (
+                    <Stack gap={2}>
+                      <LeadCaptureToolFormInput
+                        name={`tools.${state.currentToolIndex}`}
                       />
                       <Button type="submit" loading={mutation.isMutating}>
                         Update
@@ -502,7 +604,7 @@ export default function AgentPage() {
                   )}
                 </AgentForm>
               )}
-            </editApiToolForm.component>
+            </editLeadToolModal.component>
           </Box>
         )}
 
@@ -517,16 +619,13 @@ export default function AgentPage() {
                   maxHeight: '100%',
                   overflowY: 'hidden',
                   mt: -3,
-                  // overflowY: 'auto',
-                  // width: theme.breakpoints.values.md,
-                  mx: 'auto',
                 })}
               >
                 <Box
                   sx={{
                     height: '100%',
                     maxHeight: '100%',
-                    py: 4,
+                    py: 2,
                     overflowY: 'auto',
                   }}
                 >
@@ -573,11 +672,3 @@ export default function AgentPage() {
 AgentPage.getLayout = function getLayout(page: ReactElement) {
   return <Layout>{page}</Layout>;
 };
-
-// export const getServerSideProps = withAuth(
-//   async (ctx: GetServerSidePropsContext) => {
-//     return {
-//       props: {},
-//     };
-//   }
-// );

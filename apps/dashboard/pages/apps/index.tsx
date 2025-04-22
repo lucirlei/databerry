@@ -32,12 +32,12 @@ import useSWR from 'swr';
 import { z } from 'zod';
 
 import Layout from '@app/components/Layout';
-import useStateReducer from '@app/hooks/useStateReducer';
 
 import { fetcher } from '@chaindesk/lib/swr-fetcher';
 import { RouteNames } from '@chaindesk/lib/types';
 import { withAuth } from '@chaindesk/lib/withAuth';
 import { prisma } from '@chaindesk/prisma/client';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 const SlackBotModal = dynamic(
   () => import('@app/components/SlackSettingsModal'),
@@ -219,7 +219,7 @@ export default function DatasourcesPage() {
             <Stack direction={'column'} gap={1} mt={4}>
               <Image
                 className="w-16 mx-auto "
-                src="/slack-logo.png"
+                src="/shared/images/logos/slack.png"
                 width={100}
                 height={100}
                 alt="slack logo"

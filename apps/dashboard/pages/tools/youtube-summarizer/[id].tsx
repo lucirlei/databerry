@@ -29,43 +29,12 @@ import PoweredByCard from '@app/components/PoweredByCard';
 import SEO from '@app/components/SEO';
 import TopBar from '@app/components/TopBar';
 import useConfetti from '@app/hooks/useConfetti';
-import useStateReducer from '@app/hooks/useStateReducer';
 
-import { Schema } from '@chaindesk/lib/openai-tools/youtube-summary';
 import { generateActionFetcher, HTTP_METHOD } from '@chaindesk/lib/swr-fetcher';
+import { SummaryPageProps } from '@chaindesk/lib/types';
 import writeClipboard from '@chaindesk/lib/write-clipboard';
 import prisma from '@chaindesk/prisma/client';
-
-export interface Thumbnail {
-  url: string;
-  width: number;
-  height: number;
-}
-
-export interface Metadata {
-  title: string;
-  channelId: string;
-  thumbnails: {
-    high: Thumbnail;
-    medium: Thumbnail;
-    default: Thumbnail;
-  };
-  description: string;
-  publishTime: string;
-  publishedAt: string;
-  channelTitle: string;
-  liveBroadcastContent: string;
-}
-
-export type SummaryPageProps = LLMTaskOutput & {
-  output: {
-    ['en']: Schema & {
-      videoSummary?: string;
-    };
-  } & {
-    metadata: Metadata;
-  };
-};
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 var entities = {
   amp: '&',
@@ -101,7 +70,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
   const { mode } = useColorScheme();
   const router = useRouter();
   const { data: session } = useSession();
-  const videoId = router.query.id as string;
+  const videoId = router.query.id?.slice(-11) as string;
   const [state, setState] = useStateReducer({
     isBannerOpen: false,
     currentChapter: 0,
@@ -131,8 +100,11 @@ export default function SummaryPage({ output }: SummaryPageProps) {
     <>
       <TopBar href="/tools/youtube-summarizer" />
       <SEO
-        title="Free AI Youtube Video Summarizer | Chaindesk.ai"
-        description="Generate YouTube video summaries instantly for free with AI"
+        title={`${title} | AI YouTube Summary | Chaindesk`}
+        description={
+          content?.videoSummary ||
+          'Generate YouTube video summaries instantly for free with AI'
+        }
         uri={router.asPath}
         ogImage={`https://www.chaindesk.ai/api/og/youtube-summary?state=${encodeURIComponent(
           JSON.stringify({
@@ -142,6 +114,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
             videoThumbnail: output?.metadata?.thumbnails?.high?.url,
           })
         )}`}
+        keywords={output?.metadata?.keywords?.join(', ')}
       />
 
       <Stack
@@ -151,7 +124,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
         sx={{
           p: 2,
         }}
-        className={clsx('container relative max-w-6xl  mx-auto scroll-smooth')}
+        className={clsx('container relative mx-auto max-w-6xl scroll-smooth')}
       >
         <AspectRatio
           objectFit="cover"
@@ -239,7 +212,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
                 Summary
               </Typography>
               <ReactMarkdown
-                className="min-w-full prose text-gray-700 dark:prose-invert dark:text-gray-300"
+                className="min-w-full text-gray-700 prose dark:prose-invert dark:text-gray-300"
                 remarkPlugins={[remarkGfm]}
               >
                 {content.videoSummary}
@@ -252,11 +225,11 @@ export default function SummaryPage({ output }: SummaryPageProps) {
 
         <Stack direction="row" className="sm:space-x-12">
           <Box className="hidden sm:block">
-            <Box className="sticky pt-12 space-y-2 top-10">
+            <Box className="sticky top-10 pt-12 space-y-2">
               <Typography level="title-md" fontWeight={'bold'}>
                 Chapters
               </Typography>
-              <ol className="ml-5 space-y-2 list-decimal ">
+              <ol className="ml-5 space-y-2 list-decimal">
                 {content.chapters.map(({ title }, index) => (
                   <li key={index} className="hover:underline">
                     <a href={`#${title}`}>
@@ -269,13 +242,13 @@ export default function SummaryPage({ output }: SummaryPageProps) {
               </ol>
             </Box>
           </Box>
-          <Box className="relative w-full pt-10">
+          <Box className="relative pt-10 w-full">
             {content.chapters.map(({ title, summary }, index) => (
               <Stack
                 direction="row"
                 key={index}
                 justifyContent="flex-end"
-                className="flex justify-start w-full space-x-6 space-y-6"
+                className="flex justify-start space-x-6 space-y-6 w-full"
               >
                 {/* fix anchor hidden by header */}
                 <div className="relative -top-16" id={title}></div>
@@ -294,7 +267,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
                 <Box className="spac-y-4">
                   <Typography level="title-lg">{title}</Typography>
                   <ReactMarkdown
-                    className="min-w-full prose text-gray-700 dark:text-gray-300"
+                    className="min-w-full text-gray-700 prose dark:text-gray-300"
                     remarkPlugins={[remarkGfm]}
                   >
                     {decodeHTMLEntities(summary)}
@@ -340,7 +313,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
           </Box>
           <Stack
             gap={3}
-            className="container w-full max-w-5xl mx-auto md:h-full md:flex-row"
+            className="container mx-auto w-full max-w-5xl md:h-full md:flex-row"
           >
             <Box>
               {/* Turn timecode to seconds */}
@@ -355,7 +328,7 @@ export default function SummaryPage({ output }: SummaryPageProps) {
                 className="min-h-[400px] sm:min-h-[200px] sm:h-full w-full md:w-[500px]  md:rounded-xl"
               />
             </Box>
-            <Box className="flex flex-col self-center justify-start w-full space-y-3 text-white">
+            <Box className="flex flex-col justify-start self-center space-y-3 w-full text-white">
               <Typography level="h3" className="text-white">
                 {content.chapters[state.currentChapter].title}
               </Typography>
@@ -391,7 +364,7 @@ export async function getStaticProps({
     id: string;
   };
 }) {
-  const externalId = id as string;
+  const externalId = id.slice(-11) as string;
   const llmTaskOutput = await prisma.lLMTaskOutput.findUnique({
     where: {
       unique_external_id: {
@@ -413,6 +386,6 @@ export async function getStaticProps({
     props: {
       output: superjson.serialize(llmTaskOutput.output).json || null,
     },
-    revalidate: 10,
+    revalidate: 3600,
   };
 }

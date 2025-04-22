@@ -7,6 +7,7 @@ import FormControl from '@mui/joy/FormControl';
 import Stack from '@mui/joy/Stack';
 import Typography from '@mui/joy/Typography';
 import axios from 'axios';
+import cuid from 'cuid';
 import mime from 'mime-types';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
@@ -14,16 +15,15 @@ import React, { useRef } from 'react';
 import { useFormContext } from 'react-hook-form';
 import toast from 'react-hot-toast';
 
-import Input from '@app/components/Input';
-import useAgent from '@app/hooks/useAgent';
-import useStateReducer from '@app/hooks/useStateReducer';
-
 import getS3RootDomain from '@chaindesk/lib/get-s3-root-domain';
 import { RouteNames } from '@chaindesk/lib/types';
 import {
   CreateAgentSchema,
   GenerateUploadLinkRequest,
 } from '@chaindesk/lib/types/dtos';
+import useAgent from '@chaindesk/ui/hooks/useAgent';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
+import Input from '@chaindesk/ui/Input';
 
 type Props = {};
 
@@ -67,7 +67,7 @@ function GeneralInput({}: Props) {
     try {
       setState({ isUploadingAgentIcon: true });
       const file = event.target.files[0];
-      const fileName = `agent-icon.${mime.extension(file.type)}`;
+      const fileName = `${cuid()}.${mime.extension(file.type)}`;
 
       // upload text from file to AWS
       const uploadLinkRes = await axios.post(

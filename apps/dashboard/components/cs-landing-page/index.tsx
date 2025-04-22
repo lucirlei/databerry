@@ -19,6 +19,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/20/solid';
 import { useColorScheme } from '@mui/joy';
+import Head from 'next/head';
 import React, { useEffect } from 'react';
 
 import Cta from '../landing-page/Cta';
@@ -48,17 +49,43 @@ function CSLandingPage({}: Props) {
         title="Resolve AI - Resolve 50% of your support tickets instantly"
         description="Resolve AI brings a no-code platform to create custom AI chatbots trained on your data. Our solution makes customer support easy and simplifies team workflow."
         baseUrl="https://www.resolveai.io"
+        ogImage="https://www.chaindesk.ai/api/og"
         uri="/"
       />
 
-      <Header />
+      {/* <Header /> */}
 
-      <script
+      {/* <script
         defer
         src="https://cdn.jsdelivr.net/npm/@databerry/chat-bubble@latest"
         id="clq6g5cuv000wpv8iddswwvnd"
         data-name="databerry-chat-bubble"
-      ></script>
+      ></script> */}
+
+      <Head>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          body {
+            width: 100dvw;
+            max-width: 100d%;
+            overflow-x: hidden;
+          }
+          `,
+          }}
+        />
+      </Head>
+
+      <script
+        type="module"
+        dangerouslySetInnerHTML={{
+          __html: `import Chatbox from 'https://cdn.jsdelivr.net/npm/@chaindesk/embeds@latest/dist/chatbox/index.js';
+
+  Chatbox.initBubble({
+    agentId: 'clq6g5cuv000wpv8iddswwvnd',
+  });`,
+        }}
+      />
 
       <Body />
 

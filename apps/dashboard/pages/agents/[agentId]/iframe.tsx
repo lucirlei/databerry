@@ -1,14 +1,31 @@
+import Stack from '@mui/joy/Stack';
+import { useRouter } from 'next/router';
 import React, { ReactElement } from 'react';
 
-import ChatBoxFrame from '@app/components/ChatBoxFrame';
-import IFrameThemeProvider from '@app/components/IFrameThemeProvider';
+import ChatBoxLoader from '@chaindesk/ui/ChatBoxLoader';
+import ChatBoxLayout from '@chaindesk/ui/ChatboxNavBarLayout';
+import WidgetThemeProvider from '@chaindesk/ui/themes/embeds-provider';
 
 function App() {
-  return <ChatBoxFrame />;
+  const router = useRouter();
+  const agentId = router.query.agentId as string;
+
+  const Layout = (props: any) => {
+    return React.createElement(ChatBoxLayout, {
+      ...props,
+      agentId,
+    });
+  };
+
+  return (
+    <Stack sx={{ width: '100dvw', height: '100dvh', maxWidth: '100%' }}>
+      <ChatBoxLoader agentId={agentId} layout={Layout} />
+    </Stack>
+  );
 }
 
 App.getLayout = function getLayout(page: ReactElement) {
-  return <IFrameThemeProvider>{page}</IFrameThemeProvider>;
+  return <WidgetThemeProvider prefix="iframe">{page}</WidgetThemeProvider>;
 };
 
 export default App;

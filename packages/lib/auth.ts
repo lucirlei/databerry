@@ -25,7 +25,7 @@ import {
 import { prisma } from '@chaindesk/prisma/client';
 
 import { AnalyticsEvents, capture, profile } from './analytics-server';
-import getRequestCountry from './get-request-country';
+import getRequestLocation from './get-request-location';
 import getRootDomain from './get-root-domain';
 import sendVerificationRequest from './verification-sender';
 
@@ -224,16 +224,16 @@ export const authOptions = (req: NextApiRequest): AuthOptions => {
           const updated = await handleUpdateOrg(defaultOrgId!);
 
           organization = updated.organization!;
-        } else if (trigger === 'update' && newSession.orgId) {
+        } else if (trigger === 'update' && newSession?.orgId) {
           const found = user?.memberships?.find(
-            (one) => one.organizationId === newSession.orgId
+            (one) => one.organizationId === newSession?.orgId
           );
 
           if (!found) {
             throw new Error('Unauthorized');
           }
 
-          const updated = await handleUpdateOrg(newSession.orgId!);
+          const updated = await handleUpdateOrg(newSession?.orgId!);
 
           organization = updated.organization!;
         }
@@ -320,6 +320,7 @@ export const formatUserSession = (
 ) => {
   return {
     ...user,
+    customPicture: user?.customPicture || user?.picture,
     memberships: user?.memberships || [],
     usage: user?.usage as Usage,
     nbAgents: user?.['_count']?.agents as number,
@@ -430,7 +431,7 @@ export const withLogger: Middleware<
     requestId: req.requestId,
     requestPath: req.url,
     requestIP: requestIp.getClientIp(req),
-    requestCountry: getRequestCountry(req),
+    requestCountry: getRequestLocation(req).country ?? 'en',
   });
 
   req.logger.info(req.method);

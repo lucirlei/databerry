@@ -1,46 +1,39 @@
+import axios from 'axios';
+import cuid from 'cuid';
 import type { Schema as JSONSchema } from 'jsonschema';
 
 import createToolParser from '@chaindesk/lib/create-tool-parser';
+import EventDispatcher from '@chaindesk/lib/events/dispatcher';
 import { handleFormValid } from '@chaindesk/lib/forms';
 import slugify from '@chaindesk/lib/slugify';
 import {
   ChatRequest,
   FormConfigSchema,
   FormToolSchema,
+  ToolResponseSchema,
 } from '@chaindesk/lib/types/dtos';
-import { Form } from '@chaindesk/prisma';
+import { ConversationChannel, Form, Prisma } from '@chaindesk/prisma';
+import prisma from '@chaindesk/prisma/client';
 
-import { CreateToolHandler, ToolToJsonSchema } from './type';
+import {
+  CreateToolHandler,
+  CreateToolHandlerConfig,
+  ToolToJsonSchema,
+} from './type';
 
 export type FormToolPayload = Record<string, unknown>;
 
-const getFormConfig = (tool: FormToolSchema, config: any) => {
+export const toJsonSchema = ((tool: FormToolSchema) => {
   const form = tool.form as Form;
-  const useDraftConfig = !!config?.toolConfig?.useDraftConfig;
-  const formConfig = (
-    useDraftConfig ? form?.draftConfig : form?.publishedConfig
-  ) as FormConfigSchema;
-
-  return formConfig;
-};
-
-export const toJsonSchema = ((tool: FormToolSchema, config) => {
-  const form = tool.form as Form;
-  const useDraftConfig = !!config?.toolConfig?.useDraftConfig;
-  const formConfig = (
-    useDraftConfig ? form?.draftConfig : form?.publishedConfig
-  ) as FormConfigSchema;
-
   return {
-    name: `isFormValid_${slugify(form.name)}`,
-    description:
-      'Trigger only when all the required field have been answered by the user. Each field is provided by the user not by the AI. Never fill a field if not provided by the user.',
-    parameters: (formConfig as any)?.schema,
+    name: `${slugify(form.name)}-form`,
+    description: `${(tool.config as any)?.trigger}`,
   };
-}) as ToolToJsonSchema;
+}) as any;
 
-export const createHandler = ((tool: FormToolSchema, config) =>
-  async (payload: FormToolPayload) => {
+export const createHandler =
+  (tool: FormToolSchema, config: CreateToolHandlerConfig<{ type: 'form' }>) =>
+  async (payload: FormToolPayload): Promise<ToolResponseSchema> => {
     const form = tool.form as Form;
     const useDraftConfig = !!config?.toolConfig?.useDraftConfig;
     const conversationId = config?.conversationId as string;
@@ -48,17 +41,41 @@ export const createHandler = ((tool: FormToolSchema, config) =>
       useDraftConfig ? form?.draftConfig : form?.publishedConfig
     ) as FormConfigSchema;
 
-    await handleFormValid({
-      conversationId,
-      formId: tool.formId,
-      values: payload,
-      webhookUrl: formConfig?.webhook?.url!,
-    });
+    await axios.post(
+      `${process.env.NEXT_PUBLIC_DASHBOARD_URL}/api/forms/${tool.formId}`,
+      {
+        conversationId,
+        formId: tool.formId,
+        formValues: payload,
+      }
+    );
 
     return {
       data: 'Form submitted successfully',
     };
-  }) as CreateToolHandler;
+  };
+
+export const createHandlerV2 =
+  (
+    tool: FormToolSchema,
+    config: CreateToolHandlerConfig<{ type: 'form' }>,
+    channel?: ConversationChannel
+  ) =>
+  async (): Promise<ToolResponseSchema> => {
+    const messageId = cuid();
+
+    const form = tool.form as Form;
+
+    return {
+      data: `Please fill the following form in order to continue. (Reply in the same language as the user): ${process.env.NEXT_PUBLIC_DASHBOARD_URL}/forms/${form.id}?conversationId=${config?.conversationId}&messageId=${messageId}`,
+      messageId,
+      metadata: {
+        isFormSubmitted: false,
+        shouldDisplayForm: true,
+        formId: form.id,
+      },
+    };
+  };
 
 export const createParser =
   (tool: FormToolSchema, config: any) => (payload: string) => {
@@ -71,70 +88,3 @@ export const createParser =
 
     return createToolParser(schema)(payload);
   };
-
-// export const toJsonSchemaTest = ((tool: FormToolSchema, config) => {
-//   const form = tool.form as Form;
-//   const useDraftConfig = !!config?.toolConfig?.useDraftConfig;
-//   const formConfig = (
-//     useDraftConfig ? form?.draftConfig : form?.publishedConfig
-//   ) as FormConfigSchema;
-
-//   return {
-//     name: `form_state_${slugify(form.name)}`,
-//     description: `Always use this tool while in the process of filling the form ${slugify(
-//       form.name
-//     )} in order to track its current state`,
-//     parameters: {
-//       type: 'object',
-//       properties: {
-//         currentFieldName: {
-//           type: 'string',
-//           description: 'The name of the field that is going to be asked',
-//         },
-//       },
-//       required: ['currentFieldName'],
-//     } as JSONSchema,
-//   };
-// }) as ToolToJsonSchema;
-
-// export const createHandlerTest = ((tool: FormToolSchema, config) =>
-//   async (payload: FormToolPayload) => {
-//     console.log('CALLED -_______-------->', payload);
-
-//     const form = tool.form as Form;
-//     const useDraftConfig = !!config?.toolConfig?.useDraftConfig;
-//     const formConfig = (
-//       useDraftConfig ? form?.draftConfig : form?.publishedConfig
-//     ) as FormConfigSchema;
-
-//     let metadata: any = undefined;
-
-//     const currentFieldName = payload.currentFieldName as string;
-
-//     const field = formConfig.fields.find(
-//       (one) => currentFieldName === slugify(one.name)
-//     );
-
-//     if (field) {
-//       if (field.type === 'multiple_choice') {
-//         metadata = {
-//           ui: {
-//             type: 'multiple_choice',
-//             choices: field?.choices,
-//           },
-//         };
-//       }
-//     }
-
-//     return {
-//       data: 'ok',
-//       metadata,
-//     };
-//   }) as CreateToolHandler;
-
-// export const createParserTest =
-//   (tool: FormToolSchema, config: any) => (payload: string) => {
-//     const schema = toJsonSchemaTest(tool, config)?.parameters;
-
-//     return createToolParser(schema)(payload);
-//   };

@@ -22,13 +22,13 @@ import useSWR from 'swr';
 import DatastoreTable from '@app/components/DatastoreTable';
 import Layout from '@app/components/Layout';
 import UsageLimitModal from '@app/components/UsageLimitModal';
-import useStateReducer from '@app/hooks/useStateReducer';
 
 import accountConfig from '@chaindesk/lib/account-config';
 import { fetcher } from '@chaindesk/lib/swr-fetcher';
 import { RouteNames } from '@chaindesk/lib/types';
 import { withAuth } from '@chaindesk/lib/withAuth';
 import { Prisma } from '@chaindesk/prisma';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 import { getDatastores } from '../api/datastores';
 
@@ -168,9 +168,10 @@ export default function DatasourcesPage() {
         startDecorator={<InfoRoundedIcon />}
         sx={{ mb: 2 }}
       >
-        A datastore is a container that holds different type of datasources
-        (files, web pages, etc...). At the moment an Agent can be connected to
-        one datastore only.
+        A Datastore serves as a repository that contains various types of data
+        sources, including files, web pages, Notion notebooks, etc.. Once data
+        is uploaded to a Datastore, it undergoes processing (vectorization) to
+        prepare it for use by an Agent (Large Language Model).
       </Alert>
 
       {getDatastoresQuery?.data && (

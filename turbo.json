@@ -24,6 +24,7 @@
     },
     "lint": {},
     "typecheck": {},
+    "check": {},
     "sendDailyLeads": {
       "dependsOn": ["@chaindesk/prisma#prisma:generate"],
       "cache": false
@@ -37,6 +38,10 @@
       "cache": false
     },
     "sendAccountCleaningWarning": {
+      "dependsOn": ["@chaindesk/prisma#prisma:generate"],
+      "cache": false
+    },
+    "aiNewsLoad": {
       "dependsOn": ["@chaindesk/prisma#prisma:generate"],
       "cache": false
     }

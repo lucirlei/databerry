@@ -4,10 +4,11 @@ import AutorenewRounded from '@mui/icons-material/AutorenewRounded';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import PlayArrow from '@mui/icons-material/PlayArrow';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import SourceRoundedIcon from '@mui/icons-material/SourceRounded';
-import { Badge, Checkbox } from '@mui/joy';
+import { Alert, Badge, Checkbox } from '@mui/joy';
 import Box from '@mui/joy/Box';
 import Button from '@mui/joy/Button';
 import Chip from '@mui/joy/Chip';
@@ -30,7 +31,6 @@ import * as React from 'react';
 import useSWR from 'swr';
 
 import useGetDatastoreQuery from '@app/hooks/useGetDatastoreQuery';
-import useStateReducer from '@app/hooks/useStateReducer';
 
 import pagination from '@chaindesk/lib/pagination';
 import relativeDate from '@chaindesk/lib/relative-date';
@@ -41,6 +41,7 @@ import {
   DatasourceType,
   Prisma,
 } from '@chaindesk/prisma';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 const SynchButton = ({
   datasource,
@@ -197,6 +198,23 @@ export default function DatasourceTable({
 
   return (
     <React.Fragment>
+      <Alert startDecorator={<InfoRoundedIcon />} sx={{ mt: -3, mb: 2 }}>
+        <Stack>
+          {/* <p>
+            Datastores are{' '}
+            <strong>automatically synchronized every Monday</strong> at
+            approximately <strong>2 AM UTC</strong> to ensure the most
+            up-to-date information is available{' '}
+            <strong>(for premium users only)</strong>.
+          </p> */}
+          <p>
+            Datastores are <strong>automatically synchronized</strong> when the
+            underlying data changes{' '}
+            <strong>(Auto-sync is enabled for premium users only)</strong>.
+          </p>
+        </Stack>
+      </Alert>
+
       {selected?.length > 0 && (
         <Button
           loading={state.isBulkDeleting}
@@ -470,7 +488,7 @@ export default function DatasourceTable({
                   <Typography fontWeight="md">{row.id}</Typography>
                 </td> */}
                   <td>
-                    <div className="flex justify-center ">
+                    <div className="flex justify-center">
                       <Checkbox
                         disabled={state.isBulkDeleting}
                         checked={selected.includes(datasource.id)}

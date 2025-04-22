@@ -5,6 +5,8 @@ import { NextApiResponse } from 'next';
 import { z } from 'zod';
 
 import { InboxTemplate, render } from '@chaindesk/emails';
+import sendTelegramMessage from '@chaindesk/integrations/whatsapp/lib/send-telegram-message';
+import sendWhatsAppMessage from '@chaindesk/integrations/whatsapp/lib/send-whatsapp-message';
 import { ApiError, ApiErrorType } from '@chaindesk/lib/api-error';
 import ConversationManager from '@chaindesk/lib/conversation';
 import {
@@ -12,7 +14,7 @@ import {
   respond,
 } from '@chaindesk/lib/createa-api-handler';
 import { client as CrispClient } from '@chaindesk/lib/crisp';
-import mailer from '@chaindesk/lib/mailer';
+import { nodemailer } from '@chaindesk/lib/mailer';
 import cors from '@chaindesk/lib/middlewares/cors';
 import pipe from '@chaindesk/lib/middlewares/pipe';
 import { AIStatus } from '@chaindesk/lib/types/crisp';
@@ -22,11 +24,7 @@ import {
 } from '@chaindesk/lib/types/dtos';
 import { AppNextApiRequest } from '@chaindesk/lib/types/index';
 import validate from '@chaindesk/lib/validate';
-import {
-  ConversationChannel,
-  ConversationStatus,
-  MessageFrom,
-} from '@chaindesk/prisma';
+import { ConversationChannel, MailInbox, MessageFrom } from '@chaindesk/prisma';
 import prisma from '@chaindesk/prisma/client';
 const handler = createLazyAuthHandler();
 
@@ -35,6 +33,13 @@ const chatBodySchema = z.object({
   channel: z.nativeEnum(ConversationChannel),
   attachments: z.array(CreateAttachmentSchema).optional(),
   visitorId: z.union([z.string().cuid().nullish(), z.literal('')]),
+  contactId: z.union([z.string().cuid().nullish(), z.literal('')]),
+});
+
+const mailer = nodemailer.createTransport(process.env.AWS_EMAIL_SERVER, {
+  tls: {
+    minVersion: 'TLSv1.2',
+  },
 });
 
 export const sendMessage = async (
@@ -44,9 +49,9 @@ export const sendMessage = async (
   const conversationId = req.query.conversationId as string;
   const payload = chatBodySchema.parse(req.body);
   const session = req.session;
-  let externalMessageId: string | undefined;
 
   const {
+    id,
     title,
     channelCredentials,
     channelExternalId,
@@ -94,37 +99,73 @@ export const sendMessage = async (
           select: {
             name: true,
             picture: true,
+            customPicture: true,
+            image: true,
           },
         });
-        await CrispClient.website.sendMessageInConversation(
-          channelCredentials?.externalId, // websiteId
-          channelExternalId, // sessionId
-          {
-            type: 'text',
-            from: 'operator',
-            origin: 'chat',
-            content: payload.message,
-            user: {
-              type: 'website',
-              nickname: user?.name || 'Operator',
-              avatar:
-                user?.picture ||
-                'https://chaindesk.ai/app-rounded-bg-white.png',
-            },
-          }
-        );
 
-        // disable AI
-        await CrispClient.website.updateConversationMetas(
-          channelCredentials?.externalId, // websiteId
-          channelExternalId, // sessionId
-          {
-            data: {
-              aiStatus: AIStatus.disabled,
-              aiDisabledDate: new Date(),
-            },
-          }
-        );
+        const attachementCalls =
+          payload?.attachments?.map((attachement) => {
+            return CrispClient.website.sendMessageInConversation(
+              channelCredentials?.externalId, // websiteId
+              channelExternalId, // sessionId
+              {
+                type: 'file',
+                from: 'operator',
+                origin: 'chat',
+                content: {
+                  url: attachement.url,
+                  name: attachement.name,
+                  type: attachement.mimeType,
+                },
+                user: {
+                  type: 'website',
+                  nickname: user?.name || 'Operator',
+                  avatar:
+                    user?.picture ||
+                    user?.customPicture ||
+                    user?.image ||
+                    'https://chaindesk.ai/logo.png',
+                },
+              }
+            );
+          }) || [];
+
+        await Promise.all([
+          // send text content
+          CrispClient.website.sendMessageInConversation(
+            channelCredentials?.externalId, // websiteId
+            channelExternalId, // sessionId
+            {
+              type: 'text',
+              from: 'operator',
+              origin: 'chat',
+              content: payload.message,
+              user: {
+                type: 'website',
+                nickname: user?.name || 'Operator',
+                avatar:
+                  user?.picture ||
+                  user?.customPicture ||
+                  user?.image ||
+                  'https://chaindesk.ai/logo.png',
+              },
+            }
+          ),
+          // send attachements
+          ...attachementCalls,
+          // disable AI
+          CrispClient.website.updateConversationMetas(
+            channelCredentials?.externalId, // websiteId
+            channelExternalId, // sessionId
+            {
+              data: {
+                aiStatus: AIStatus.disabled,
+                aiDisabledDate: new Date(),
+              },
+            }
+          ),
+        ]);
       } catch (e) {
         console.error(e);
         throw Error(
@@ -155,10 +196,20 @@ export const sendMessage = async (
         );
       }
       break;
+    case 'website':
+    case 'form':
     case 'mail':
-      if (!mailInbox) {
+      if (payload.channel === 'mail' && !mailInbox) {
         throw new ApiError(ApiErrorType.NOT_FOUND);
       }
+
+      let _inbox = mailInbox
+        ? mailInbox
+        : ({
+            alias: organization?.id,
+            fromName: session?.user?.name || organization?.name,
+            showBranding: true,
+          } as MailInbox);
 
       const emails: string[] = [
         ...(participantsUsers
@@ -170,18 +221,37 @@ export const sendMessage = async (
       ];
 
       if (emails.length <= 0) {
-        throw new ApiError(ApiErrorType.INVALID_REQUEST);
+        if (payload.channel === 'mail') {
+          throw new ApiError(ApiErrorType.INVALID_REQUEST);
+        } else {
+          break;
+        }
+      }
+
+      let _channelExternalId = channelExternalId;
+
+      if (!_channelExternalId) {
+        _channelExternalId = `<${cuid()}@mail.chaindesk.ai>`;
+        await prisma.conversation.update({
+          where: {
+            id,
+          },
+          data: {
+            channelExternalId: _channelExternalId,
+          },
+        });
       }
 
       const subject = title || organization?.name || '💌 Request';
       const sent = await mailer.sendMail({
-        inReplyTo: channelExternalId!,
+        inReplyTo: _channelExternalId!,
+        references: [_channelExternalId],
         from: {
-          name: mailInbox?.fromName!,
+          name: _inbox?.fromName!,
           address:
-            mailInbox?.customEmail && mailInbox?.isCustomEmailVerified
-              ? mailInbox?.customEmail
-              : `${mailInbox?.alias}@${process.env.INBOUND_EMAIL_DOMAIN}`,
+            _inbox?.customEmail && _inbox?.isCustomEmailVerified
+              ? _inbox?.customEmail
+              : `${_inbox?.alias}@${process.env.INBOUND_EMAIL_DOMAIN}`,
         },
         to: emails,
         subject,
@@ -194,15 +264,92 @@ export const sendMessage = async (
           <InboxTemplate
             title={subject}
             message={payload.message}
-            signature={mailInbox?.signature!}
-            showBranding={!!mailInbox?.showBranding}
+            signature={_inbox?.signature!}
+            showBranding={!!_inbox?.showBranding}
           />
         ),
       });
 
       break;
-    case 'website':
-      // no special treatement for website channel.
+    case 'whatsapp':
+      try {
+        await sendWhatsAppMessage({
+          to: channelExternalId!,
+          credentials: channelCredentials as any,
+          message: {
+            type: 'text',
+            text: {
+              body: payload.message!,
+            },
+          },
+        });
+
+        if (payload.attachments?.length) {
+          await Promise.all(
+            payload.attachments.map((each) => {
+              const isVideo = each.mimeType?.includes('video');
+              const isImage = each.mimeType?.includes('image');
+              const isAudio = each.mimeType?.includes('audio');
+
+              let message = {};
+
+              if (isVideo) {
+                message = {
+                  type: 'video',
+                  video: {
+                    link: each.url,
+                  },
+                };
+              } else if (isImage) {
+                message = {
+                  type: 'image',
+                  image: {
+                    link: each.url,
+                  },
+                };
+              } else if (isAudio) {
+                message = {
+                  type: 'audio',
+                  audio: {
+                    link: each.url,
+                  },
+                };
+              } else {
+                message = {
+                  type: 'document',
+                  document: {
+                    link: each.url,
+                  },
+                };
+              }
+
+              return sendWhatsAppMessage({
+                to: channelExternalId!,
+                credentials: channelCredentials as any,
+                message: message as any,
+              });
+            })
+          );
+        }
+      } catch (e) {
+        console.error(e);
+        throw Error(
+          `could not send message through whatsapp ${(e as any)?.message}`
+        );
+      }
+      break;
+    case 'telegram':
+      try {
+        await sendTelegramMessage({
+          message: payload.message,
+          chatId: channelExternalId!,
+          messageId: (metadata as any)?.messageId!,
+          attachments: payload.attachments!,
+          token: (channelCredentials?.config as any)?.http_token,
+        });
+      } catch (e) {
+        console.error(e);
+      }
       break;
     default:
       throw new Error('Unsupported Communication Channel.');
@@ -225,8 +372,11 @@ export const sendMessage = async (
     text: payload.message,
     attachments: payload.attachments,
 
+    contactId: payload.contactId!,
     visitorId: payload.visitorId!,
-    userId: !!payload.visitorId ? undefined : session?.user?.id,
+    userId: !!(payload.visitorId || payload.contactId)
+      ? undefined
+      : session?.user?.id,
   });
 
   return conv;

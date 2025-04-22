@@ -49,7 +49,7 @@ export const HelpRequest = ({
     },
     {
       id: '2',
-      text: 'How can I help you? flkdsj skldjf lksdfj lksdjf lskdfjsdlfk jdlksdj lfdskjf ',
+      text: 'How can I help you?',
       from: 'agent',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -77,27 +77,28 @@ export const HelpRequest = ({
           <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] w-[465px]">
             <Section className="mt-[22px]">
               <Img
-                src={`https://www.chaindesk.ai/app-logo-icon.png`}
+                src={`https://www.chaindesk.ai/logo.png`}
                 width="50"
                 height="auto"
                 alt="Vercel"
-                className="mx-auto my-0"
+                className="mx-auto my-0 w-10"
               />
             </Section>
             <Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
               ❓ Visitor requested human assistance from Agent{' '}
               <strong>{agentName}</strong>
             </Heading>
-            <Row>
+            {/* <Row>
               <Text className="text-black text-[14px]">
                 Visitor Email: <strong>{visitorEmail}</strong>
               </Text>
-            </Row>
+            </Row> */}
             <Row>
               <Text className="text-black text-[14px]">
                 Agent Name: <strong>{agentName}</strong>
               </Text>
             </Row>
+
             <Row>
               <Text className="text-black text-[14px]">
                 Conversation History:
@@ -105,9 +106,9 @@ export const HelpRequest = ({
             </Row>
 
             <Container>
-              {(messages || []).map((message) => (
+              {(messages || []).map((message, index) => (
                 <Section
-                  key={message.id}
+                  key={message.id || index}
                   className={clsx(
                     'px-4 py-2 mb-2 border border-solid border-[#eaeaea] rounded-lg',
                     {
@@ -119,7 +120,7 @@ export const HelpRequest = ({
                 </Section>
               ))}
             </Container>
-            <Section className="text-center mt-[32px] mb-[32px]">
+            {/* <Section className="text-center mt-[32px] mb-[32px]">
               <Button
                 pX={20}
                 pY={12}
@@ -128,7 +129,7 @@ export const HelpRequest = ({
               >
                 Reply
               </Button>
-            </Section>
+            </Section> */}
 
             {/* <Section>
               <Row>
@@ -163,12 +164,10 @@ export const HelpRequest = ({
                 <Hr className="border border-solid border-[#eaeaea] my-[26px] mx-0 w-full" />
                 <Section className="text-center mt-[32px] mb-[32px]">
                   <Button
-                    pX={20}
-                    pY={12}
-                    className="bg-[#fff] rounded text-black text-[12px] font-semibold no-underline text-center border border-solid border-[#eaeaea]"
+                    className="bg-[#000] rounded text-white text-[12px] font-semibold no-underline text-center px-4 py-3"
                     href={ctaLink}
                   >
-                    View Conversation
+                    Intervene
                   </Button>
                 </Section>
                 <Text className="text-black text-[14px] leading-[24px]">

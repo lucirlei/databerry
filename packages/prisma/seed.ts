@@ -1,6 +1,11 @@
 import Stripe from 'stripe';
 
 import prisma from './client';
+import { Prisma } from '@prisma/client';
+
+import { PRODUCT_FEEDBACK_FORM } from '../lib/forms/templates';
+import { formToJsonSchema } from '../lib/forms/form-to-json-schema';
+import { FormFieldSchema } from '../lib/types/dtos';
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2022-11-15',
@@ -77,6 +82,7 @@ async function main() {
     const freeOrgId = 'clnokxi0p000008jlaxe24av9';
     const premiumOrgId = 'clnol6ij8000308jl1cky5hsy';
     const subscriptionId = 'clnolau4y000408jl08aqektv';
+    const premiumAgentId = 'clrz0tn6h000108kxfyomdzxg';
 
     // await prisma.organization.update({
     //   where: {
@@ -181,6 +187,94 @@ async function main() {
       },
       update: {
         name: 'Adam',
+      },
+    });
+
+    const agentCreateProps = {
+      id: premiumAgentId,
+      name: 'Adam',
+      description: 'Chaindesk AI Agent for Customer Support',
+      organization: {
+        connect: {
+          id: premiumOrgId,
+        },
+      },
+      handle: 'adam',
+      owner: {
+        connect: {
+          id: userId,
+        },
+      },
+      systemPrompt: `Your name is Adam, and you are a Customer Support Specialist at Chaindesk.ai
+As a customer support agent, please provide a helpful and professional response to the user's question or issue.
+Support email is support@chaindesk.ai
+Answer briefly.
+Inject humor, playfulness, and a spirited tone into the content. You can use emojies.`,
+      userPrompt: '{query}',
+      visibility: 'public',
+      useMarkdown: true,
+      restrictKnowledge: true,
+      useLanguageDetection: true,
+    } as Prisma.AgentCreateInput;
+
+    await prisma.agent.upsert({
+      where: {
+        id: premiumAgentId,
+      },
+      update: {
+        ...agentCreateProps,
+      },
+      create: {
+        ...agentCreateProps,
+      },
+    });
+
+    const formConfig = {
+      fields: PRODUCT_FEEDBACK_FORM.schema.fields,
+      schema: formToJsonSchema(PRODUCT_FEEDBACK_FORM.schema.fields),
+      startScreen: {
+        title: 'Product Feedback',
+        description: '',
+      },
+    };
+
+    const formId = 'clupr4or2000108l41a4b75jw';
+    await prisma.form.upsert({
+      where: {
+        id: formId,
+      },
+      create: {
+        id: formId,
+        name: 'Seed Form',
+        organization: {
+          connect: {
+            id: premiumOrgId,
+          },
+        },
+        publishedConfig: formConfig as any,
+        draftConfig: formConfig as any,
+        agent: {
+          create: {
+            hidden: true,
+            restrictKnowledge: false,
+            useMarkdown: false,
+            useLanguageDetection: false,
+            visibility: 'public',
+            name: 'Hidden Agent',
+            description: "Form's hidden agent",
+            organizationId: premiumOrgId,
+            tools: {
+              create: {
+                type: 'form',
+                formId: formId,
+              },
+            },
+          },
+        },
+      },
+      update: {
+        publishedConfig: formConfig as any,
+        draftConfig: formConfig as any,
       },
     });
   } catch (err) {

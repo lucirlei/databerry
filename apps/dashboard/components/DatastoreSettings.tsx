@@ -28,9 +28,7 @@ import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 
 import { DatastoreFormsMap } from '@app/components/DatastoreForms';
-import Input from '@app/components/Input';
 import useGetDatastoreQuery from '@app/hooks/useGetDatastoreQuery';
-import useStateReducer from '@app/hooks/useStateReducer';
 import { createDatastore } from '@app/pages/api/datastores';
 import { updateDatastore } from '@app/pages/api/datastores/[id]';
 
@@ -41,6 +39,8 @@ import { RouteNames } from '@chaindesk/lib/types';
 import { GenerateUploadLinkRequest } from '@chaindesk/lib/types/dtos';
 import { QdrantSchema as Schema } from '@chaindesk/lib/types/models';
 import { Datastore, DatastoreVisibility, Prisma } from '@chaindesk/prisma';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
+import Input from '@chaindesk/ui/Input';
 
 import UsageLimitCard from './UsageLimitCard';
 import UserFree from './UserFree';
@@ -371,7 +371,8 @@ function DatastoreSettings() {
     <Box
       sx={(theme) => ({
         maxWidth: '100%',
-        width: theme.breakpoints.values.md,
+        width: '100%',
+        px: 4,
         mx: 'auto',
       })}
     >
@@ -438,7 +439,7 @@ function DatastoreSettings() {
 
       <Divider sx={{ my: 4 }} />
 
-      <Box id="chatgpt-plugin">
+      {/* <Box id="chatgpt-plugin">
         {getDatastoreQuery?.data?.id && (
           <FormControl sx={{ gap: 1 }}>
             <FormLabel>ChatGPT Plugin</FormLabel>
@@ -486,7 +487,7 @@ function DatastoreSettings() {
         )}
       </Box>
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{ my: 4 }} /> */}
 
       <FormControl sx={{ gap: 1 }}>
         <FormLabel>Delete Datastore</FormLabel>

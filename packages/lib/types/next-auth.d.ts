@@ -7,6 +7,7 @@ import type {
   Subscription,
   SubscriptionPlan,
   Usage,
+  User,
 } from '@chaindesk/prisma';
 
 declare module 'next-auth' {
@@ -38,7 +39,8 @@ declare module 'next-auth' {
       usage: Usage;
       nbAgents: number;
       nbDatastores: number;
-    } & DefaultSession['user'];
+    } & DefaultSession['user'] &
+      User;
   }
 }
 

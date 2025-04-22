@@ -44,11 +44,11 @@ export const VercelInviteUserEmail = ({
           <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] w-[465px]">
             <Section className="mt-[32px]">
               <Img
-                src={`https://www.chaindesk.ai/app-logo-icon.png`}
+                src={`https://www.chaindesk.ai/logo.png`}
                 width="50"
                 height="auto"
                 alt="Vercel"
-                className="mx-auto my-0 "
+                className="mx-auto my-0 w-10"
               />
             </Section>
             <Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
@@ -66,9 +66,7 @@ export const VercelInviteUserEmail = ({
 
             <Section className="text-center mt-[32px] mb-[32px]">
               <Button
-                pX={20}
-                pY={12}
-                className="bg-[#000000] rounded text-white text-[12px] font-semibold no-underline text-center"
+                className="bg-[#000000] rounded text-white text-[12px] font-semibold no-underline text-center px-4 py-3"
                 href={ctaLink}
               >
                 Open Dashoard

@@ -18,7 +18,7 @@ import { RouteNames } from '@chaindesk/lib/types';
 
 function MobileNavLink({ href, children }) {
   return (
-    <Popover.Button as={Link} href={href} className="block w-full p-2">
+    <Popover.Button as={Link} href={href} className="block p-2 w-full">
       {children}
     </Popover.Button>
   );
@@ -83,15 +83,10 @@ function MobileNavigation() {
         >
           <Popover.Panel
             as="div"
-            className="absolute inset-x-0 flex flex-col p-4 mt-4 text-lg tracking-tight origin-top bg-white shadow-xl top-full rounded-2xl text-slate-900 ring-1 ring-slate-900/5"
+            className="flex absolute inset-x-0 top-full flex-col p-4 mt-4 text-lg tracking-tight bg-white rounded-2xl ring-1 shadow-xl origin-top text-slate-900 ring-slate-900/5"
           >
             <MobileNavLink href="/pricing">Pricing</MobileNavLink>
-            <MobileNavLink
-              href="https://github.com/gmpetrov/chaindesk"
-              target={'_blank'}
-            >
-              GitHub
-            </MobileNavLink>
+
             <MobileNavLink
               href="https://databerry.getrewardful.com/"
               target={'_blank'}
@@ -103,6 +98,12 @@ function MobileNavigation() {
             </MobileNavLink>
             <MobileNavLink href="https://docs.chaindesk.ai/" target={'_blank'}>
               API Docs
+            </MobileNavLink>
+            <MobileNavLink
+              href="https://github.com/gmpetrov/chaindesk"
+              target={'_blank'}
+            >
+              GitHub
             </MobileNavLink>
 
             {/* <MobileNavLink href="#testimonials">Testimonials</MobileNavLink> */}
@@ -134,7 +135,7 @@ export function Header() {
   return (
     <>
       {/* #112F8A */}
-      <div className="p-1 text-sm text-center text-white bg-[#220E11]  flex-row items-center justify-center hidden sm:flex">
+      {/* <div className="p-1 text-sm text-center text-white bg-[#220E11]  flex-row items-center justify-center hidden sm:flex">
         <div className="flex flex-row space-x-12">
           <div className="inline-flex items-center space-x-1">
             <CheckIcon className="w-4 font-bold text-yellow-400" />
@@ -152,10 +153,10 @@ export function Header() {
             <span>Used by 10,042 happy customers</span>
           </div>
         </div>
-      </div>
-      <header className="py-10 bg-black">
+      </div> */}
+      <header className="py-10 bg-transparent">
         <Container>
-          <nav className="relative z-50 flex justify-between">
+          <nav className="flex relative z-50 justify-between">
             <div className="flex items-center md:gap-x-12">
               <Link href="/" aria-label="Home">
                 {!logoUrl && <Logo className="w-auto h-10" />}
@@ -185,8 +186,6 @@ export function Header() {
                 </Button>
               </Link> */}
 
-                <Menu />
-
                 {/* <Button
                   href="/products/crisp-plugin"
                   size="sm"
@@ -199,23 +198,28 @@ export function Header() {
                 </Button> */}
 
                 {/* <NavLink href="/help">Help Center</NavLink> */}
+                <NavLink
+                  href="https://databerry.getrewardful.com/"
+                  target={'_blank'}
+                >
+                  Affiliates
+                </NavLink>
+                <NavLink href="/#integrations">Integrations</NavLink>
                 <NavLink href="/pricing">Pricing</NavLink>
+
+                <Menu />
+
                 {/* <NavLink href="https://github.com/gmpetrov/chaindesk" target={'_blank'}>
                 GitHub
               </NavLink> */}
                 {/* <NavLink href="https://docs.chaindesk.ai/" target={'_blank'}>
                 Docs
               </NavLink> */}
-                {/* <NavLink
-                  href="https://databerry.getrewardful.com/"
-                  target={'_blank'}
-                >
-                  Affiliates
-                </NavLink> */}
+
                 {/* <NavLink href="#testimonials">Testimonials</NavLink> */}
               </div>
             </div>
-            <div className="flex items-center gap-x-5 md:gap-x-8">
+            <div className="flex gap-x-5 items-center md:gap-x-8">
               {/* <div className="hidden md:block">
               <NavLink href="https://app.chaindesk.ai">Sign in</NavLink>
             </div> */}

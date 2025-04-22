@@ -24,13 +24,12 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import html from 'react-syntax-highlighter/dist/esm/languages/hljs/htmlbars';
 import { isValid } from 'zod';
 
-import useStateReducer from '@app/hooks/useStateReducer';
-
 import {
   CreateAgentSchema,
   UpdateAgentSchema,
 } from '@chaindesk/lib/types/dtos';
 import writeClipboard from '@chaindesk/lib/write-clipboard';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 import CommonInterfaceInput from './AgentInputs/CommonInterfaceInput';
 import AgentForm from './AgentForm';
@@ -208,26 +207,33 @@ export default function StandalonePageSettings(props: Props) {
                           height: '500px',
                           borderRadius: '15px',
                         }}
-                        src={`${process.env.NEXT_PUBLIC_DASHBOARD_URL?.replace(
-                          'app.',
-                          ''
-                        )}/agents/${query?.data?.id}/standalone?counter=${
-                          state.counter
-                        }`}
+                        src={`${process.env.NEXT_PUBLIC_DASHBOARD_URL}/agents/${query?.data?.id}/standalone?counter=${state.counter}`}
                         frameBorder="0"
                       ></iframe>
                     </Stack>
                     <Stack width="100%" gap={3}>
                       <CommonInterfaceInput />
 
-                      <Button
-                        type="submit"
-                        loading={mutation.isMutating}
-                        sx={{ ml: 'auto', mt: 2 }}
-                        disabled={!formState.isDirty || !formState.isValid}
-                      >
-                        Update
-                      </Button>
+                      {formState.isDirty && formState.isValid && (
+                        <Button
+                          type="submit"
+                          loading={mutation.isMutating}
+                          sx={{
+                            zIndex: 2,
+                            ml: 'auto',
+                            mt: 2,
+                            position: 'fixed',
+                            bottom: 20,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            borderRadius: '30px',
+                          }}
+                          size="lg"
+                          color="success"
+                        >
+                          Save
+                        </Button>
+                      )}
 
                       <Stack gap={4}>
                         <Stack gap={1}>
@@ -293,15 +299,6 @@ export default function StandalonePageSettings(props: Props) {
                           </Stack>
                         </Stack>
                       </Stack>
-
-                      <Button
-                        type="submit"
-                        loading={mutation.isMutating}
-                        sx={{ ml: 'auto', mt: 2 }}
-                        disabled={!formState.isDirty || !formState.isValid}
-                      >
-                        Update
-                      </Button>
                     </Stack>
                   </Stack>
                 </Stack>

@@ -31,8 +31,8 @@ import useSWR from 'swr';
 
 import useContactsQuery from '@app/hooks/useGetContactsQuery';
 import useGetDatastoreQuery from '@app/hooks/useGetDatastoreQuery';
-import useStateReducer from '@app/hooks/useStateReducer';
 
+import formatPhoneNumber from '@chaindesk/lib/format-phone-number';
 import pagination from '@chaindesk/lib/pagination';
 import relativeDate from '@chaindesk/lib/relative-date';
 import { RouteNames } from '@chaindesk/lib/types';
@@ -42,6 +42,7 @@ import {
   DatasourceType,
   Prisma,
 } from '@chaindesk/prisma';
+import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 import ContactSettings from './ContactSettings';
 
@@ -341,6 +342,8 @@ export default function ContactsTable({}: // handleSynch,
                 />
               </th> */}
               <th style={{}}>Email</th>
+              <th style={{}}>Phone Number</th>
+              <th style={{}}>Name</th>
               {/* <th style={{ width: 120, padding: 12 }}>Type</th> */}
               {/* <th style={{ width: 120, padding: 12 }}>Size</th> */}
               {/* <th style={{ width: 120, padding: 12 }}>Last Sync</th> */}
@@ -362,6 +365,10 @@ export default function ContactsTable({}: // handleSynch,
                   }}
                 >
                   <td>{contact.email}</td>
+                  <td>
+                    {formatPhoneNumber({ phoneNumber: contact?.phoneNumber! })}
+                  </td>
+                  <td>{contact?.firstName}</td>
                   {/* <td style={{ textAlign: 'center' }}>
                   <Checkbox
                     checked={selected.includes(row.id)}

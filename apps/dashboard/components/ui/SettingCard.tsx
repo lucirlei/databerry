@@ -4,7 +4,7 @@ import React, { ComponentProps, forwardRef } from 'react';
 
 type Props = {
   children: React.ReactNode;
-  title?: string;
+  title?: string | JSX.Element;
   description?: string;
   disableSubmitButton?: boolean;
 
@@ -31,9 +31,8 @@ export default forwardRef(function SettingCard(props: Props, ref) {
         </CardOverflow>
       )}
       <Stack
-        spacing={2}
         {...props.stackProps}
-        sx={{ my: 1, height: '100%', width: '100%', ...props?.stackProps?.sx }}
+        sx={{ height: '100%', width: '100%', ...props?.stackProps?.sx }}
       >
         {props.children}
       </Stack>
