@@ -285,7 +285,7 @@ function IntegrationSettings({ onSubmitSuccess, agentId }: Props) {
               Make sure you have{' '}
               <LinkButton
                 linkProps={{
-                  href: 'https://docs.chaindesk.ai/integrations/whatsapp',
+                  href: 'https://www.chaindesk.ai/help/whatsapp',
                   target: '_blank',
                 }}
                 buttonProps={{

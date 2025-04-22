@@ -2,7 +2,6 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import Alert from '@mui/joy/Alert';
 import Avatar from '@mui/joy/Avatar';
-import Box from '@mui/joy/Box';
 import Button from '@mui/joy/Button';
 import Card from '@mui/joy/Card';
 import Checkbox from '@mui/joy/Checkbox';
@@ -16,7 +15,6 @@ import Option from '@mui/joy/Option';
 import Select from '@mui/joy/Select';
 import Slider from '@mui/joy/Slider';
 import Stack from '@mui/joy/Stack';
-import SvgIcon from '@mui/joy/SvgIcon';
 import Tab, { tabClasses } from '@mui/joy/Tab';
 import TabList from '@mui/joy/TabList';
 import TabPanel from '@mui/joy/TabPanel';
@@ -120,15 +118,6 @@ const promptTemplates = [
   },
 ];
 
-const ProviderLogo = ({ src }: { src?: string }) => {
-  if (!src) return null;
-  return (
-    <Box sx={{ p: 0.5, background: 'white', borderRadius: 'md' }}>
-      <Box component={'img'} src={src} sx={{ width: 15, heiht: 15 }} />
-    </Box>
-  );
-};
-
 export default function ModelInput({}: Props) {
   const session = useSession();
   const { watch, setValue, register, formState, control } =
@@ -162,8 +151,9 @@ export default function ModelInput({}: Props) {
           sx={{ mb: 1 }}
           color="warning"
         >
-          For better results, consider using gpt-4o as it gives more accurate
-          responses and adheres to prompt instructions more effectively.
+          For better results, consider using gpt-4-turbo as it gives more
+          accurate responses and adheres to prompt instructions more
+          effectively.
         </Alert>
 
         <Select
@@ -186,7 +176,6 @@ export default function ModelInput({}: Props) {
           }}
         >
           <Option value={AgentModelName.gpt_3_5_turbo}>
-            <ProviderLogo src={ModelConfig[AgentModelName.gpt_4_turbo].icon} />
             GPT-3.5 Turbo - 16K -{' '}
             {ModelConfig[AgentModelName.gpt_3_5_turbo].cost} credit/query
           </Option>
@@ -199,25 +188,10 @@ export default function ModelInput({}: Props) {
           </Option> */}
 
           <Option
-            value={AgentModelName.gpt_4o}
-            disabled={!session?.data?.organization?.isPremium}
-          >
-            <ProviderLogo src={ModelConfig[AgentModelName.gpt_4o].icon} />
-            <Chip size="sm" color="warning">
-              NEW
-            </Chip>{' '}
-            GPT-4o - 128k - 🔥 The most powerful -{' '}
-            {ModelConfig[AgentModelName.gpt_4o].cost} credits/query (premium)
-          </Option>
-
-          <Option
             value={AgentModelName.gpt_4_turbo}
             disabled={!session?.data?.organization?.isPremium}
           >
-            <ProviderLogo src={ModelConfig[AgentModelName.gpt_4_turbo].icon} />
-            GPT-4 Turbo - 128k - {
-              ModelConfig[AgentModelName.gpt_4_turbo].cost
-            }{' '}
+            GPT-4 Turbo - 128k - {ModelConfig[AgentModelName.gpt_4_turbo].cost}{' '}
             credits/query (premium)
           </Option>
 
@@ -225,33 +199,8 @@ export default function ModelInput({}: Props) {
             value={AgentModelName.claude_3_haiku}
             disabled={!session?.data?.organization?.isPremium}
           >
-            <ProviderLogo
-              src={ModelConfig[AgentModelName.claude_3_haiku].icon}
-            />
             Claude 3 Haiku - 200k -{' '}
             {ModelConfig[AgentModelName.claude_3_haiku].cost} credits/query
-            (premium)
-          </Option>
-          <Option
-            value={AgentModelName.claude_3_sonnet}
-            disabled={!session?.data?.organization?.isPremium}
-          >
-            <ProviderLogo
-              src={ModelConfig[AgentModelName.claude_3_sonnet].icon}
-            />
-            Claude 3 Sonnet - 200k -{' '}
-            {ModelConfig[AgentModelName.claude_3_sonnet].cost} credits/query
-            (premium)
-          </Option>
-          <Option
-            value={AgentModelName.claude_3_opus}
-            disabled={!session?.data?.organization?.isPremium}
-          >
-            <ProviderLogo
-              src={ModelConfig[AgentModelName.claude_3_opus].icon}
-            />
-            Claude 3 Opus - 200k -{' '}
-            {ModelConfig[AgentModelName.claude_3_opus].cost} credits/query
             (premium)
           </Option>
           {/* <Option
@@ -265,23 +214,9 @@ export default function ModelInput({}: Props) {
             value={AgentModelName.dolphin_mixtral_8x7b}
             disabled={!session?.data?.organization?.isPremium}
           >
-            <ProviderLogo
-              src={ModelConfig[AgentModelName.dolphin_mixtral_8x7b].icon}
-            />
             Dolphin 2.6 Mixtral 8x7B (⚠️ Uncensored / Can produce NSFW content)
             - 32k - {ModelConfig[AgentModelName.dolphin_mixtral_8x7b].cost}{' '}
             credits/query (premium)
-          </Option>
-          <Option
-            value={AgentModelName.mixtral_8x22b}
-            disabled={!session?.data?.organization?.isPremium}
-          >
-            <ProviderLogo
-              src={ModelConfig[AgentModelName.mixtral_8x22b].icon}
-            />
-            Mixtral 8x22B - 64k -{' '}
-            {ModelConfig[AgentModelName.mixtral_8x22b].cost} credits/query
-            (premium)
           </Option>
         </Select>
       </FormControl>

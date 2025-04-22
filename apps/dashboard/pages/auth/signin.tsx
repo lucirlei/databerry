@@ -13,12 +13,12 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { AnalyticsContext } from '@app/components/Analytics';
+import Input from '@app/components/Input';
 import Logo from '@app/components/Logo';
 import SEO from '@app/components/SEO';
 
 import { appUrl } from '@chaindesk/lib/config';
 import { RouteNames } from '@chaindesk/lib/types';
-import Input from '@chaindesk/ui/Input';
 
 type Props = {
   // subscription: Subscription | null;
@@ -74,14 +74,8 @@ export default function SignInPage() {
     defaultValues: {},
   });
 
-  const handleSubmitEmail = async (values: Schema) => {
-    try {
-      setIsLoading(true);
-      await signIn('email', { email: values.email });
-    } catch {
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubmitEmail = (values: Schema) => {
+    signIn('email', { email: values.email });
   };
   return (
     <>
@@ -105,8 +99,8 @@ export default function SignInPage() {
         })}
       >
         <>
-          <div className="flex flex-col justify-center flex-1 px-4 py-12 sm:px-6 lg:px-20 xl:px-24">
-            <div className="flex w-full max-w-sm mx-auto lg:w-96">
+          <div className="flex flex-col flex-1 justify-center px-4 py-12 sm:px-6 lg:px-20 xl:px-24">
+            <div className="flex mx-auto w-full max-w-sm lg:w-96">
               {!isReady && (
                 <CircularProgress
                   size="sm"
@@ -124,15 +118,15 @@ export default function SignInPage() {
                 // leaveFrom="opacity-100"
                 // leaveTo="opacity-0"
               >
-                <div className="flex flex-col items-center justify-center">
+                <div className="flex flex-col justify-center items-center">
                   <div className="inline-flex items-center mr-auto space-x-2">
                     <a
                       href="https://chaindesk.ai"
                       // className="absolute top-4 left-4 md:top-8 md:left-8"
                     >
                       <div className="inline-flex items-center space-x-2">
-                        <div className="flex items-center justify-center w-8 h-8 bg-transparent rounded shadow-sm shadow-zinc-950/20">
-                          <Logo className="cursor-pointer w-14" />
+                        <div className="flex justify-center items-center w-8 h-8 bg-transparent rounded shadow-sm shadow-zinc-950/20">
+                          <Logo className="w-14 cursor-pointer" />
                         </div>
                         <Typography level="h4" fontWeight="xl">
                           {`Chaindesk`}
@@ -150,10 +144,10 @@ export default function SignInPage() {
                   </div>
                 </div>
 
-                <div className="w-full mt-8">
-                  <div className="w-full mt-6">
+                <div className="mt-8 w-full">
+                  <div className="mt-6 w-full">
                     <form
-                      className="flex flex-col w-full space-y-4"
+                      className="flex flex-col space-y-4 w-full"
                       onSubmit={handleSubmit(handleSubmitEmail)}
                     >
                       <Input
@@ -178,12 +172,12 @@ export default function SignInPage() {
 
                   <div className="mt-8">
                     <div className="relative">
-                      <div className="absolute inset-0 flex justify-center">
+                      <div className="flex absolute inset-0 justify-center">
                         <Divider sx={{ width: '100%', my: 'auto' }} />
 
                         {/* <div className="w-full border-t border-gray-500" /> */}
                       </div>
-                      <div className="relative flex justify-center">
+                      <div className="flex relative justify-center">
                         <Typography
                           level="body-xs"
                           className="px-2"

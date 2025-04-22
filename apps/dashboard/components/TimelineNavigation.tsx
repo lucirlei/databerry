@@ -3,8 +3,8 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { IconButton, Stack, Typography } from '@mui/joy';
 import { useMemo } from 'react';
 
-import useDeepCompareEffect from '@chaindesk/ui/hooks/useDeepCompareEffect';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
+import useDeepCompareEffect from '@app/hooks/useDeepCompareEffect';
+import useStateReducer from '@app/hooks/useStateReducer';
 
 type Props = {
   values: number[];

@@ -216,7 +216,6 @@ export const chatAgentRequest = async (
         sources: chatRes?.agentResponse?.sources,
         conversationId: chatRes.conversationId,
         visitorId: visitorId,
-        metadata: chatRes?.agentResponse?.metadata,
       }),
       res,
     });

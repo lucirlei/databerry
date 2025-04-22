@@ -3,7 +3,6 @@ import Box from '@mui/joy/Box';
 import Chip from '@mui/joy/Chip';
 import Stack from '@mui/joy/Stack';
 import React, { memo, useEffect } from 'react';
-import dayjs from '@chaindesk/lib/date';
 import SchoolTwoToneIcon from '@mui/icons-material/SchoolTwoTone';
 import filterInternalSources from '@chaindesk/lib/filter-internal-sources';
 import ChatMessageApproval from './ChatMessageApproval';
@@ -18,8 +17,6 @@ import EvalButton from './EvalButton';
 import Button from '@mui/joy/Button';
 import Typography from '@mui/joy/Typography';
 import { motion } from 'framer-motion';
-import BubblesLoading from './Bubbles';
-import { CardProps } from '@mui/joy';
 
 type Props = {
   index?: number;
@@ -33,8 +30,6 @@ type Props = {
   organizationId?: string;
   withTextAnimation?: boolean;
   onTextAnimationComplete?: any;
-  shouldAnimate?: boolean;
-  cardProps?: CardProps;
 };
 
 function ChatMessageComponent({
@@ -44,8 +39,6 @@ function ChatMessageComponent({
   hideInternalSources,
   withTextAnimation,
   onTextAnimationComplete,
-  shouldAnimate = true,
-  cardProps,
   ...props
 }: Props) {
   return (
@@ -57,8 +50,8 @@ function ChatMessageComponent({
         mr: message?.from === 'agent' ? 'auto' : 'none',
         ml: message?.from === 'human' ? 'auto' : 'none',
       }}
-      initial={shouldAnimate ? { opacity: 0, y: 20 } : {}}
-      animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
     >
       <Stack
         sx={{
@@ -75,8 +68,58 @@ function ChatMessageComponent({
         ></Avatar>
         {/* )} */}
 
-        <Stack gap={1} sx={{ maxWidth: '100%', overflow: 'hidden' }}>
-          {message?.step?.type === 'tool_call' && <BubblesLoading />}
+        <Stack gap={1} sx={{ overflow: 'visible' }}>
+          {message?.step?.type === 'tool_call' && (
+            <Chip
+              size="md"
+              sx={{ overflow: 'visible' }}
+              slotProps={{
+                label: {
+                  sx: {
+                    overflow: 'visible',
+                  },
+                },
+              }}
+            >
+              <Stack
+                direction="row"
+                alignItems={'center'}
+                gap={0.5}
+                sx={{ overflow: 'visible' }}
+              >
+                <Box
+                  className="animate-[bounce_1s_infinite]"
+                  sx={(t) => ({
+                    width: '9px',
+                    height: '9px',
+                    background: t.palette.neutral[400],
+                    borderRadius: '100%',
+                    opacity: 0.7,
+                  })}
+                ></Box>
+                <Box
+                  className="animate-[bounce_1s_infinite_-100ms]"
+                  sx={(t) => ({
+                    width: '9px',
+                    height: '9px',
+                    background: t.palette.neutral[400],
+                    borderRadius: '100%',
+                    opacity: 0.7,
+                  })}
+                ></Box>
+                <Box
+                  className="animate-[bounce_1s_infinite_-200ms]"
+                  sx={(t) => ({
+                    width: '9px',
+                    height: '9px',
+                    background: t.palette.neutral[400],
+                    borderRadius: '100%',
+                    opacity: 0.7,
+                  })}
+                ></Box>
+              </Stack>
+            </Chip>
+          )}
 
           {message?.approvals?.length > 0 && (
             <Stack gap={1}>
@@ -97,11 +140,6 @@ function ChatMessageComponent({
                 className={cn(
                   message?.from === 'agent' ? 'message-agent' : 'message-human'
                 )}
-                sx={{
-                  mr: 'auto',
-                  ...cardProps?.sx,
-                }}
-                {...cardProps}
               >
                 {/* {message?.step?.type === 'tool_call' && (
 
@@ -149,64 +187,11 @@ function ChatMessageComponent({
                   </Stack>
                 )}
               </ChatMessageCard>
-              <Stack gap={1}>
-                <Stack
-                  gap={1}
-                  direction="row"
-                  sx={{
-                    pl: 1,
-                  }}
-                >
-                  {message?.fromName && (
-                    <Typography level="body-xs" sx={{ opacity: '0.8' }}>
-                      {message?.fromName}
-                    </Typography>
-                  )}
-                  {message?.createdAt && (
-                    <Typography
-                      level="body-xs"
-                      sx={{ opacity: '0.8', fontStyle: 'italic' }}
-                    >
-                      {`${dayjs((message as any)?.createdAt).fromNow()}`}
-                    </Typography>
-                  )}
-
-                  {message?.from === 'agent' &&
-                    message?.id &&
-                    !message?.disableActions &&
-                    !!message?.message && (
-                      <Stack
-                        direction="row"
-                        sx={{
-                          marginLeft: 'auto',
-                          mt: -0.5,
-                        }}
-                        // marginBottom={'auto'}
-                      >
-                        <CopyButton text={message?.message} />
-                        <EvalButton
-                          messageId={message?.id!}
-                          handleEvalAnswer={props.handleEvalAnswer}
-                          eval={message?.eval}
-                        />
-
-                        {props.handleImprove && (
-                          <Button
-                            size="sm"
-                            variant="plain"
-                            color="neutral"
-                            startDecorator={<SchoolTwoToneIcon />}
-                            onClick={() =>
-                              props.handleImprove?.(message, index)
-                            }
-                          >
-                            Improve
-                          </Button>
-                        )}
-                      </Stack>
-                    )}
-                </Stack>
-              </Stack>
+              {message?.fromName && (
+                <Typography level="body-xs" sx={{ opacity: '0.8', pl: 1 }}>
+                  {message?.fromName}
+                </Typography>
+              )}
             </Stack>
           )}
 
@@ -217,6 +202,38 @@ function ChatMessageComponent({
               ))}
             </Stack>
           )}
+          {message?.from === 'agent' &&
+            message?.id &&
+            !message?.disableActions &&
+            !!message?.message && (
+              <Stack
+                direction="row"
+                sx={{
+                  marginLeft: 'auto',
+                  mt: -1,
+                }}
+                // marginBottom={'auto'}
+              >
+                <CopyButton text={message?.message} />
+                <EvalButton
+                  messageId={message?.id!}
+                  handleEvalAnswer={props.handleEvalAnswer}
+                  eval={message?.eval}
+                />
+
+                {props.handleImprove && (
+                  <Button
+                    size="sm"
+                    variant="plain"
+                    color="neutral"
+                    startDecorator={<SchoolTwoToneIcon />}
+                    onClick={() => props.handleImprove?.(message, index)}
+                  >
+                    Improve
+                  </Button>
+                )}
+              </Stack>
+            )}
         </Stack>
       </Stack>
     </Stack>

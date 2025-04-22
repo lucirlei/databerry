@@ -13,6 +13,7 @@ import {
   FormHelperText,
   FormLabel,
   IconButton,
+  Input as JoyInput,
   Option,
   Select,
   Stack,
@@ -28,15 +29,12 @@ import {
 } from 'react-hook-form';
 
 import { CreateFormSchema } from '@chaindesk/lib/types/dtos';
-import { FieldType } from '@chaindesk/ui/embeds/forms/types';
 import Input from '@chaindesk/ui/Input';
-import {
-  countryCodeToFlag,
-  defaultCountries,
-  parseCountry,
-} from '@chaindesk/ui/PhoneNumberInput';
 
 import { SortableList } from '../dnd/SortableList';
+import { FieldType } from '../TraditionalForm';
+
+import { forceSubmit } from './utils';
 
 export enum formType {
   traditional = 'traditional',
@@ -50,7 +48,6 @@ const fieldTypes = [
   'textArea',
   'select',
   'file',
-  'number',
 ] as const;
 
 type fieldTypes = (typeof fieldTypes)[number];
@@ -85,13 +82,13 @@ export const Choices = <T extends Record<string, unknown>>({
         {fields?.map((_, i) => (
           <Stack key={i} direction="row" gap={1}>
             <Input
-              control={control}
               endDecorator={
                 <IconButton
                   size="sm"
                   color="danger"
                   onClick={() => {
                     remove(i);
+                    forceSubmit();
                   }}
                 >
                   <CloseIcon fontSize="sm" />
@@ -104,6 +101,7 @@ export const Choices = <T extends Record<string, unknown>>({
                 },
               }}
               size="sm"
+              control={control}
               variant="soft"
               {...register(`${name}.${i}`)}
             />
@@ -135,15 +133,16 @@ function FieldsInput({ type = 'traditional' }: Props) {
     name: 'draftConfig.fields',
   });
 
-  const fieldsValues = methods.watch('draftConfig.fields') || [];
+  const fieldsValues = methods.watch('draftConfig.fields');
 
   return (
     <Stack gap={2}>
       {type === formType.traditional && (
         <SortableList
-          items={fieldsValues}
+          items={fields}
           onChange={(from, to) => {
             swap(from, to);
+            forceSubmit();
           }}
           renderItem={(field, index) => (
             <SortableList.Item id={field.id}>
@@ -160,7 +159,7 @@ function FieldsInput({ type = 'traditional' }: Props) {
                     sx={{ alignItems: 'start', width: '100%' }}
                   >
                     <AccordionGroup size="sm">
-                      <Accordion sx={{ position: 'relative' }}>
+                      <Accordion sx={{ position: 'relative' }} defaultExpanded>
                         <AccordionSummary>
                           <Typography className="truncate w-[100px]">
                             {methods?.getValues(
@@ -222,6 +221,8 @@ function FieldsInput({ type = 'traditional' }: Props) {
                                       }
                                     );
                                   }
+
+                                  forceSubmit();
                                 }}
                               >
                                 {fieldTypes.map((each) => (
@@ -253,41 +254,9 @@ function FieldsInput({ type = 'traditional' }: Props) {
                               </FormControl>
                             )}
 
-                            {field.type === 'phoneNumber' && (
-                              <FormControl>
-                                <FormLabel>Default Country Code</FormLabel>
-                                <Controller
-                                  control={methods.control}
-                                  name={`draftConfig.fields.${index}.defaultCountryCode`}
-                                  render={({ field }) => (
-                                    <Select
-                                      onChange={(_, value) => {
-                                        field.onChange(value as string);
-                                      }}
-                                    >
-                                      {defaultCountries.map((each) => {
-                                        const country = parseCountry(each);
-                                        return (
-                                          <Option
-                                            key={country.iso2}
-                                            value={country.iso2}
-                                          >
-                                            {`${countryCodeToFlag(
-                                              country.iso2
-                                            )} ${country.name}`}
-                                          </Option>
-                                        );
-                                      })}
-                                    </Select>
-                                  )}
-                                />
-                              </FormControl>
-                            )}
-
                             <FormControl>
                               <FormLabel>Placeholder</FormLabel>
-                              <Input
-                                control={methods.control}
+                              <JoyInput
                                 {...methods.register(
                                   `draftConfig.fields.${index}.placeholder`
                                 )}
@@ -306,32 +275,6 @@ function FieldsInput({ type = 'traditional' }: Props) {
                                 }}
                               />
                             </FormControl>
-                            {fieldsValues?.[index]?.type ===
-                              FieldType.Number && (
-                              <FormControl>
-                                <FormLabel>Min</FormLabel>
-                                <Input
-                                  control={methods.control}
-                                  type="number"
-                                  {...methods.register(
-                                    `draftConfig.fields.${index}.min`
-                                  )}
-                                />
-                              </FormControl>
-                            )}
-                            {fieldsValues?.[index]?.type ===
-                              FieldType.Number && (
-                              <FormControl>
-                                <FormLabel>Max</FormLabel>
-                                <Input
-                                  control={methods.control}
-                                  type="number"
-                                  {...methods.register(
-                                    `draftConfig.fields.${index}.max`
-                                  )}
-                                />
-                              </FormControl>
-                            )}
                             {[FieldType.Email, FieldType.PhoneNumber].includes(
                               fieldsValues?.[index]?.type as FieldType
                             ) && (
@@ -358,6 +301,7 @@ function FieldsInput({ type = 'traditional' }: Props) {
                       size="sm"
                       onClick={() => {
                         remove(index);
+                        forceSubmit();
                       }}
                     >
                       <CloseRoundedIcon fontSize="md" color="danger" />
@@ -390,6 +334,7 @@ function FieldsInput({ type = 'traditional' }: Props) {
                     value={value}
                     onChange={(_, value) => {
                       onChange(value);
+                      forceSubmit();
                     }}
                     sx={{ minWidth: '80px' }}
                   >
@@ -412,6 +357,7 @@ function FieldsInput({ type = 'traditional' }: Props) {
                   <IconButton
                     onClick={() => {
                       remove(index);
+                      forceSubmit();
                     }}
                   >
                     <CloseIcon fontSize="sm" />

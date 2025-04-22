@@ -16,15 +16,15 @@ import pDebounce from 'p-debounce';
 import React, { memo, useCallback, useRef } from 'react';
 import { FormProvider, useForm, useFormContext } from 'react-hook-form';
 
+import useDeepCompareEffect from '@app/hooks/useDeepCompareEffect';
 import useModal from '@app/hooks/useModal';
+import useStateReducer from '@app/hooks/useStateReducer';
 
 import {
   CreateAgentSchema,
   HttpToolSchema,
   ToolSchema,
 } from '@chaindesk/lib/types/dtos';
-import useDeepCompareEffect from '@chaindesk/ui/hooks/useDeepCompareEffect';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 import Markdown from '@chaindesk/ui/Markdown';
 
 import HttpToolInput, { type Fields } from './AgentInputs/HttpToolInput';
@@ -163,7 +163,7 @@ export function HttpToolTestForm<T extends HttpToolSchema | CreateAgentSchema>({
     method,
     loading: false,
     testResult: '',
-    responseStatus: 200,
+    responseStatus: '',
     isSnackBarOpen: false,
   });
 
@@ -244,13 +244,12 @@ export function HttpToolTestForm<T extends HttpToolSchema | CreateAgentSchema>({
         body: state.body,
         headers: state.headers,
       });
-
       setState({
         responseStatus: response.data.status,
         testResult: '```\n' + JSON.stringify(response.data, null, 2) + '\n```',
       });
 
-      setToolValidState(response.data.status === 200 ? true : false);
+      setToolValidState(response.data.status === 'OK' ? true : false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -337,7 +336,7 @@ export function HttpToolTestForm<T extends HttpToolSchema | CreateAgentSchema>({
         <Stack sx={{ mt: 4 }} gap={1}>
           <Stack direction="row" gap={1} width="100%">
             <Typography level="body-sm">Test Result</Typography>
-            <Chip color={state.responseStatus === 200 ? 'success' : 'danger'}>
+            <Chip color={state.responseStatus === 'OK' ? 'success' : 'danger'}>
               {state.responseStatus}
             </Chip>
           </Stack>
@@ -350,13 +349,13 @@ export function HttpToolTestForm<T extends HttpToolSchema | CreateAgentSchema>({
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         open={state.isSnackBarOpen}
         onClose={() => setState({ isSnackBarOpen: false })}
-        color={state.responseStatus === 200 ? 'success' : 'danger'}
+        color={state.responseStatus === 'OK' ? 'success' : 'danger'}
       >
-        {state.responseStatus === 200
+        {state.responseStatus === 'OK'
           ? 'Congratualations! yourt test succeeded, you can close this modal.'
           : 'Ouch! your test  failed :('}
 
-        {state.responseStatus === 200 && (
+        {state.responseStatus === 'OK' && (
           <Button
             size="sm"
             color="success"

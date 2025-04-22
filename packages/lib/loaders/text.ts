@@ -1,6 +1,5 @@
 import { AppDocument } from '@chaindesk/lib/types/document';
 
-import cleanTextForEmbeddings from '../clean-text-for-embeddings';
 import { DatasourceText } from '../types/models';
 
 import { DatasourceLoaderBase } from './base';
@@ -13,7 +12,7 @@ export class TextLoader extends DatasourceLoaderBase<DatasourceText> {
   async load(text: string) {
     return [
       new AppDocument({
-        pageContent: cleanTextForEmbeddings(text),
+        pageContent: text,
         metadata: {
           datastore_id: this.datasource.datastoreId!,
           datasource_id: this.datasource.id,

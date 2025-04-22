@@ -11,17 +11,51 @@ import cors from '@chaindesk/lib/middlewares/cors';
 import pipe from '@chaindesk/lib/middlewares/pipe';
 import rateLimit from '@chaindesk/lib/middlewares/rate-limit';
 import roles from '@chaindesk/lib/middlewares/roles';
-import {
-  agentInclude,
-  ToolSchema,
-  UpdateAgentSchema,
-} from '@chaindesk/lib/types/dtos';
+import { ToolSchema, UpdateAgentSchema } from '@chaindesk/lib/types/dtos';
 import { AppNextApiRequest } from '@chaindesk/lib/types/index';
 import validate from '@chaindesk/lib/validate';
 import { AgentVisibility, MembershipRole, Prisma } from '@chaindesk/prisma';
 import { prisma } from '@chaindesk/prisma/client';
 
 const handler = createLazyAuthHandler();
+
+export const agentInclude: Prisma.AgentInclude = {
+  organization: {
+    select: {
+      id: true,
+      subscriptions: {
+        select: {
+          id: true,
+        },
+        where: {
+          status: {
+            in: ['active'],
+          },
+        },
+      },
+    },
+  },
+  tools: {
+    include: {
+      datastore: {
+        include: {
+          _count: {
+            select: {
+              datasources: {
+                where: {
+                  status: {
+                    in: ['running', 'pending'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      form: true,
+    },
+  },
+};
 
 export const getAgent = async (
   req: AppNextApiRequest,
@@ -44,18 +78,6 @@ export const getAgent = async (
     agent?.organizationId !== session?.organization?.id
   ) {
     throw new ApiError(ApiErrorType.UNAUTHORIZED);
-  }
-
-  if (
-    !session?.organization?.id ||
-    agent?.organizationId !== session?.organization?.id
-  ) {
-    // remove sentitive data from agent (http tool may store credentials)
-    agent?.tools?.forEach((tool) => {
-      if (tool.type === 'http') {
-        tool.config = {};
-      }
-    });
   }
 
   return agent;
@@ -170,11 +192,6 @@ export const updateAgent = async (
           },
           data: {
             ...(tool?.type === 'http'
-              ? {
-                  config: tool.config,
-                }
-              : {}),
-            ...(tool?.type === 'form'
               ? {
                   config: tool.config,
                 }

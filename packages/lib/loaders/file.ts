@@ -1,7 +1,6 @@
 import mime from 'mime-types';
 
 import { s3 } from '../aws';
-import cleanTextForEmbeddings from '../clean-text-for-embeddings';
 import excelToDocs from '../excel-to-docs';
 import getS3RootDomain from '../get-s3-root-domain';
 import pdfToDocs from '../pdf-to-docs';
@@ -25,9 +24,7 @@ export const fileBufferToDocs = async (props: {
     case 'text/markdown':
       docs = [
         new AppDocument<FileMetadataSchema>({
-          pageContent: cleanTextForEmbeddings(
-            new TextDecoder('utf-8').decode(props.buffer)
-          ),
+          pageContent: new TextDecoder('utf-8').decode(props.buffer),
           metadata: {} as any,
         }),
       ];
@@ -79,7 +76,7 @@ export class FileLoader extends DatasourceLoaderBase<DatasourceFile> {
     });
 
     return docs.map(({ pageContent, metadata }) => ({
-      pageContent: pageContent,
+      pageContent,
       metadata: {
         ...metadata,
         datasource_id: this.datasource.id,

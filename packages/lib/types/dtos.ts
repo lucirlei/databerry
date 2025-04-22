@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { z } from 'zod';
 
 import {
@@ -11,7 +10,6 @@ import {
   FormType,
   Message,
   MessageEval,
-  Prisma,
   PromptType,
   ServiceProviderType,
   ToolType,
@@ -33,51 +31,6 @@ import {
 } from './document';
 import { AgentInterfaceConfig, DatastoreSchema } from './models';
 import { ChainType } from '.';
-
-export const agentInclude: Prisma.AgentInclude = {
-  organization: {
-    select: {
-      id: true,
-      subscriptions: {
-        select: {
-          id: true,
-          plan: true,
-        },
-        where: {
-          status: {
-            in: ['active'],
-          },
-        },
-      },
-    },
-  },
-  tools: {
-    include: {
-      datastore: {
-        include: {
-          _count: {
-            select: {
-              datasources: {
-                where: {
-                  status: {
-                    in: ['running', 'pending'],
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      form: true,
-    },
-  },
-};
-
-export type agentInclude = typeof agentInclude;
-
-export type GetAgentResponse = Prisma.AgentGetPayload<{
-  include: agentInclude;
-}>;
 
 export const CreateDatastoreRequestSchema = DatastoreSchema.extend({
   id: z.string().trim().cuid().optional(),
@@ -212,7 +165,6 @@ export const CreateAttachmentSchema = z.object({
   size: z.number(),
   mimeType: z.string(),
 });
-
 export type CreateAttachmentSchema = z.infer<typeof CreateAttachmentSchema>;
 
 export const CreateContactSchema = z.object({
@@ -255,9 +207,6 @@ export const ChatRequest = ChatModelConfigSchema.extend({
   attachments: z.array(CreateAttachmentSchema).optional(),
 
   contact: CreateContactSchema.optional(),
-  attachmentsForAI: z.array(z.string().cuid()).optional(),
-
-  images: z.array(z.string().url()).optional(),
 
   //  DEPRECATED
   promptTemplate: z.string().optional(),
@@ -287,47 +236,6 @@ export const ServiceProviderZendeskSchema = ServiceProviderBaseSchema.extend({
   }),
 });
 
-export const ServiceProvideTelegramSchema = ServiceProviderBaseSchema.extend({
-  type: z.literal(ServiceProviderType.telegram),
-  config: z.object({
-    http_token: z.string().superRefine(async (arg, ctx) => {
-      const invalidTokenFormatIssue = {
-        code: 'custom',
-        message: 'Invalid Token Format',
-      } as const;
-      const unRecognizedTokenIssue = {
-        code: 'custom',
-        message: 'Http token is not a recognized  telegram token.',
-      } as const;
-
-      // /^\d+:[\w-]+$/: numeric-part:alphanumeric-part
-      if (!/^\d+:[\w-]+$/.test(arg)) {
-        return ctx.addIssue(invalidTokenFormatIssue);
-      }
-
-      try {
-        const { data: response } = await axios.post(
-          `${process.env.NEXT_PUBLIC_DASHBOARD_URL}/api/tools/http-tool/validator`,
-          {
-            url: `https://api.telegram.org/bot${arg}/getMe`,
-            method: 'POST',
-          }
-        );
-        if (!response.data.ok) {
-          return ctx.addIssue(unRecognizedTokenIssue);
-        }
-      } catch {
-        return ctx.addIssue(unRecognizedTokenIssue);
-      }
-    }),
-    secret_key: z.string().cuid().optional(), // set by chaindesk, to validate webhook calls.
-  }),
-});
-
-export type ServiceProvideTelegramSchema = z.infer<
-  typeof ServiceProvideTelegramSchema
->;
-
 export const ServiceProviderWhatsappSchema = ServiceProviderBaseSchema.extend({
   type: z.literal(ServiceProviderType.whatsapp),
   accessToken: z.string().min(1),
@@ -347,15 +255,6 @@ export const ServiceProviderSchema = z.discriminatedUnion('type', [
   ServiceProviderZendeskSchema,
   ServiceProviderWhatsappSchema,
 ]);
-
-export const AddServiceProviderTelegramSchema =
-  ServiceProvideTelegramSchema.extend({
-    agentId: z.string().cuid(),
-  });
-
-export type AddServiceProviderTelegramSchema = z.infer<
-  typeof AddServiceProviderTelegramSchema
->;
 
 export const AddServiceProviderWhatsappSchema =
   ServiceProviderWhatsappSchema.extend({
@@ -683,17 +582,10 @@ export const FormFieldBaseSchema = z.object({
   required: z.boolean().default(true),
   name: z.string().toLowerCase().trim().min(3),
 });
-
 export const FormFieldSchema = z.discriminatedUnion('type', [
   FormFieldBaseSchema.extend({
     type: z.literal('text'),
     placeholder: z.string().optional(),
-  }),
-  FormFieldBaseSchema.extend({
-    type: z.literal('number'),
-    placeholder: z.string().optional(),
-    min: z.coerce.number().default(0).optional(),
-    max: z.coerce.number().default(42).optional(),
   }),
   FormFieldBaseSchema.extend({
     type: z.literal('multiple_choice'),
@@ -712,7 +604,6 @@ export const FormFieldSchema = z.discriminatedUnion('type', [
   FormFieldBaseSchema.extend({
     type: z.literal('phoneNumber'),
     placeholder: z.string().optional(),
-    defaultCountryCode: z.string().optional(),
     shouldCreateContact: z.boolean().default(true).optional(),
   }),
   FormFieldBaseSchema.extend({
@@ -753,11 +644,9 @@ export const FormConfigSchema = z.object({
     .object({
       title: z.string().max(50),
       description: z.string().max(250),
-      cta: z
-        .object({
-          label: z.string(),
-        })
-        .optional(),
+      cta: z.object({
+        label: z.string(),
+      }),
     })
     .optional(),
   endScreen: z

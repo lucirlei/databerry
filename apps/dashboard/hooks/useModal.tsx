@@ -4,10 +4,9 @@ import AppModal from '@app/components/ui/AppModal';
 type Props = {
   disableClose?: boolean;
   onClose?(...args: any[]): any;
-  title?: string;
 };
 
-function useModal({ disableClose, onClose, title }: Props = {}) {
+function useModal({ disableClose, onClose }: Props = {}) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const open = useCallback(() => {
@@ -24,7 +23,6 @@ function useModal({ disableClose, onClose, title }: Props = {}) {
       <AppModal
         {...props}
         disableClose={disableClose}
-        title={title}
         modalProps={{
           open: isOpen,
           onClose: !!disableClose ? () => {} : close,

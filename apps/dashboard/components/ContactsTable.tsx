@@ -31,6 +31,7 @@ import useSWR from 'swr';
 
 import useContactsQuery from '@app/hooks/useGetContactsQuery';
 import useGetDatastoreQuery from '@app/hooks/useGetDatastoreQuery';
+import useStateReducer from '@app/hooks/useStateReducer';
 
 import formatPhoneNumber from '@chaindesk/lib/format-phone-number';
 import pagination from '@chaindesk/lib/pagination';
@@ -42,7 +43,6 @@ import {
   DatasourceType,
   Prisma,
 } from '@chaindesk/prisma';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 import ContactSettings from './ContactSettings';
 

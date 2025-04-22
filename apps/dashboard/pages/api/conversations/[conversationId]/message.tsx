@@ -5,7 +5,6 @@ import { NextApiResponse } from 'next';
 import { z } from 'zod';
 
 import { InboxTemplate, render } from '@chaindesk/emails';
-import sendTelegramMessage from '@chaindesk/integrations/whatsapp/lib/send-telegram-message';
 import sendWhatsAppMessage from '@chaindesk/integrations/whatsapp/lib/send-whatsapp-message';
 import { ApiError, ApiErrorType } from '@chaindesk/lib/api-error';
 import ConversationManager from '@chaindesk/lib/conversation';
@@ -14,7 +13,7 @@ import {
   respond,
 } from '@chaindesk/lib/createa-api-handler';
 import { client as CrispClient } from '@chaindesk/lib/crisp';
-import { nodemailer } from '@chaindesk/lib/mailer';
+import mailer from '@chaindesk/lib/mailer';
 import cors from '@chaindesk/lib/middlewares/cors';
 import pipe from '@chaindesk/lib/middlewares/pipe';
 import { AIStatus } from '@chaindesk/lib/types/crisp';
@@ -34,12 +33,6 @@ const chatBodySchema = z.object({
   attachments: z.array(CreateAttachmentSchema).optional(),
   visitorId: z.union([z.string().cuid().nullish(), z.literal('')]),
   contactId: z.union([z.string().cuid().nullish(), z.literal('')]),
-});
-
-const mailer = nodemailer.createTransport(process.env.AWS_EMAIL_SERVER, {
-  tls: {
-    minVersion: 'TLSv1.2',
-  },
 });
 
 export const sendMessage = async (
@@ -197,7 +190,6 @@ export const sendMessage = async (
       }
       break;
     case 'website':
-    case 'form':
     case 'mail':
       if (payload.channel === 'mail' && !mailInbox) {
         throw new ApiError(ApiErrorType.NOT_FOUND);
@@ -336,19 +328,6 @@ export const sendMessage = async (
         throw Error(
           `could not send message through whatsapp ${(e as any)?.message}`
         );
-      }
-      break;
-    case 'telegram':
-      try {
-        await sendTelegramMessage({
-          message: payload.message,
-          chatId: channelExternalId!,
-          messageId: (metadata as any)?.messageId!,
-          attachments: payload.attachments!,
-          token: (channelCredentials?.config as any)?.http_token,
-        });
-      } catch (e) {
-        console.error(e);
       }
       break;
     default:

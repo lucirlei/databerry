@@ -14,20 +14,28 @@ import { CssVarsProvider, StyledEngineProvider } from '@mui/joy/styles';
 import React, { useEffect, useState } from 'react';
 import Frame, { FrameContextConsumer } from 'react-frame-component';
 import toast from 'react-hot-toast';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import html from 'react-syntax-highlighter/dist/esm/languages/hljs/htmlbars';
+import docco from 'react-syntax-highlighter/dist/esm/styles/hljs/vs2015';
+
+import { useDeepCompareMemoize } from '@app/hooks/useDeepCompareEffect';
+import { theme, themeKeys } from '@app/utils/themes/iframe-widget';
 
 import { appUrl } from '@chaindesk/lib/config';
 import { CreateAgentSchema } from '@chaindesk/lib/types/dtos';
-import ChatBoxLoader from '@chaindesk/ui/ChatBoxLoader';
-import ChatboxNavBarLayout from '@chaindesk/ui/ChatboxNavBarLayout';
-import { useDeepCompareMemoize } from '@chaindesk/ui/hooks/useDeepCompareEffect';
-import Markdown from '@chaindesk/ui/Markdown';
-import WidgetThemeProvider from '@chaindesk/ui/themes/embeds-provider';
 
 import CommonInterfaceInput from './AgentInputs/CommonInterfaceInput';
 import CustomCSSInput from './AgentInputs/CustomCSSInput';
 import AgentForm from './AgentForm';
+import ChatBoxFrame from './ChatBoxFrame';
+import ChatboxNavBarLayout from './ChatboxNavBarLayout';
 import ConnectForm from './ConnectForm';
 import ReactFrameStyleFix from './ReactFrameStyleFix';
+import WidgetThemeProvider from './WidgetThemeProvider';
+
+if (typeof window !== 'undefined') {
+  SyntaxHighlighter.registerLanguage('htmlbars', html);
+}
 
 type Props = {
   agentId: string;
@@ -55,10 +63,7 @@ function RenderWidget({ agentId, config }: { agentId: string; config: any }) {
             });
 
             return (
-              <WidgetThemeProvider
-                emotionCache={cache}
-                prefix="chaindesk-iframe"
-              >
+              <WidgetThemeProvider emotionCache={cache} name="chaindesk-iframe">
                 <ReactFrameStyleFix />
 
                 <Box
@@ -73,7 +78,7 @@ function RenderWidget({ agentId, config }: { agentId: string; config: any }) {
                     },
                   }}
                 >
-                  <ChatBoxLoader
+                  <ChatBoxFrame
                     agentId={agentId}
                     initConfig={memoizedConfig!}
                     layout={ChatboxNavBarLayout}
@@ -217,11 +222,15 @@ export default function BubbleWidgetSettings(props: Props) {
                         });
                       }}
                     >
-                      <Markdown>
-                        {`~~~html
-${installScript}
-~~~`}
-                      </Markdown>
+                      <SyntaxHighlighter
+                        language="htmlbars"
+                        style={docco}
+                        customStyle={{
+                          borderRadius: 10,
+                        }}
+                      >
+                        {installScript}
+                      </SyntaxHighlighter>
                     </Box>
                   </Stack>
                 </>

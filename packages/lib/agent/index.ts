@@ -47,7 +47,6 @@ type AgentManagerProps = ChatModelConfigSchema &
     | 'userPrompt'
     | 'toolsConfig'
     | 'conversationId'
-    | 'images'
   > & {
     channel?: ChatRequest['channel'];
     input: string;

@@ -86,7 +86,6 @@ export type ChatProps = ChatModelConfigSchema & {
   topK?: number;
   toolsConfig?: ChatRequest['toolsConfig'];
   conversationId?: ChatRequest['conversationId'];
-  images?: string[];
 
   // Behaviors
   useMarkdown?: boolean;
@@ -116,7 +115,6 @@ const chat = async ({
   useLanguageDetection,
   restrictKnowledge,
   channel,
-  images,
   ...otherProps
 }: ChatProps) => {
   // Tools
@@ -296,7 +294,7 @@ const chat = async ({
   const truncatedHistory = (
     await truncateChatMessages({
       messages: formatMessagesOpenAI(history || []).reverse(),
-      maxTokens: Math.min(ModelConfig[modelName]?.maxTokens * 0.3, 2000), // 30% tokens limit for history - max 2000 tokens
+      maxTokens: ModelConfig[modelName]?.maxTokens * 0.3, // 30% tokens limit for history
     })
   ).reverse();
 
@@ -360,24 +358,19 @@ const chat = async ({
     }
     ${
       useLanguageDetection
-        ? `Always answer using same language as the user's last message.`
+        ? `Answer the users question in the same language as the user question. You can speak all languages.`
         : ``
     }
     ${
       // use useLanguageDetection for this too until we add a checkbox in the ui
       useLanguageDetection
-        ? `Never make up URLs, email addresses, or any other information that have not been provided during the conversation.`
+        ? `Never make up URLs, email addresses, or any other information that have not been provided during the conversation. Only use information provided by the user to fill forms.`
         : ``
     }
     ${!!markAsResolvedTool ? markAsResolvedInstructions : ``}
     ${!!requestHumanTool ? requestHumanInstructions : ``}
+    ${nbDatastoreTools > 0 ? `Knowledge Base: ${retrievalData?.context}` : ``}
     `.trim();
-
-    const userMessage = promptInject({
-      template: userPrompt || '{query}',
-      query: query,
-      context: retrievalData?.context,
-    });
 
     const messages: ChatCompletionMessageParam[] = [
       ...(_systemPrompt
@@ -393,40 +386,23 @@ const chat = async ({
           ? ([
               {
                 role: 'user',
-                content: `Only use informations from the provided knowledge base. If you don't have enough information to answer my questions, politely say that you do not know. Do not mention the knowledge base, context, or any specific sources when information is not found. If the information is not available, simply state that you do not have enough information to answer the question and apologize for the inconvenience. For example, if a user asks about a topic for which there is no available information, respond with: "Unfortunately, I do not have enough information about [topic] to give you a detailed explanation. I apologize that I cannot provide a more informative response to your question.`,
+                content: `Only use previous message to answer my questions. If information to answer my question is not relevant, politely say that you do not know. I do not want to see misleading answers. Don't try to make up an answer.`,
               },
               {
                 role: 'assistant',
-                content: `Ok I will follow your instructions carefully.`,
+                content: `Ok I will follow your instructions carefully. I will only use the knowledge base you provided to answer your questions. If informations to answer your questions can't be found in the knowledge base or if informations are not complete enough I will politely say that I do not know. I will not generate misleading answers. I will not try to make up an answer.`,
               },
             ] as ChatCompletionMessageParam[])
           : ([] as ChatCompletionMessageParam[])
         : []),
-
-      ...(nbDatastoreTools > 0
-        ? [
-            {
-              role: 'system' as any,
-              // name: 'queryKnowledgeBase',
-              content: `<knowledge-base>${retrievalData?.context}</knowledge-base>`,
-            },
-          ]
-        : []),
       ...truncatedHistory,
       {
         role: 'user',
-        content:
-          ModelConfig[modelName]?.hasVision && !!images?.length
-            ? [
-                { type: 'text', text: userMessage },
-                ...(images?.map?.((url) => ({
-                  type: 'image_url',
-                  image_url: {
-                    url,
-                  },
-                })) as { type: 'image_url'; image_url: { url: string } }[]),
-              ]
-            : userMessage,
+        content: promptInject({
+          template: userPrompt || '{query}',
+          query: query,
+          context: retrievalData?.context,
+        }),
       },
     ];
 
@@ -478,16 +454,6 @@ const chat = async ({
       (formTool) => formTool.config?.messageCountTrigger === numberOfMessages
     );
 
-    if (formToolToCall) {
-      // Force the model to use this tool
-      messages.push({
-        role: `user`,
-        content: `Call function \`share-form-${slugify(
-          formToolToCall?.form?.name || ''
-        )}\``,
-      });
-    }
-
     const callParams = {
       handleStream: stream,
       model: ModelConfig[modelName]?.name,
@@ -498,16 +464,31 @@ const chat = async ({
       presence_penalty: otherProps.presencePenalty,
       max_tokens: otherProps.maxTokens,
       signal: abortController?.signal,
-      ...(ModelConfig[modelName].isToolCallingSupported &&
-      openAiTools.length > 0
-        ? { tool_choice: 'auto', tools: openAiTools }
-        : { tools: [] }),
+      tools: ModelConfig[modelName].isToolCallingSupported ? openAiTools : [],
+      ...(openAiTools?.length > 0
+        ? {
+            tool_choice: formToolToCall!!
+              ? {
+                  type: 'function',
+                  function: {
+                    ...formToolToJsonSchema(formToolToCall),
+                    parse: JSON.parse,
+                    function: createHandler(createFormToolHandlerV2)(
+                      formToolToCall,
+                      {
+                        ...baseConfig,
+                        toolConfig: formToolToCall.id
+                          ? toolsConfig?.[formToolToCall.id]
+                          : undefined,
+                      },
+                      channel
+                    ),
+                  },
+                }
+              : 'auto',
+          }
+        : {}),
     } as Parameters<typeof model.call>[0];
-
-    console.log(
-      'CALL PARAMS_----------------->',
-      JSON.stringify(callParams, null, 2)
-    );
 
     const output = await model.call(callParams);
 

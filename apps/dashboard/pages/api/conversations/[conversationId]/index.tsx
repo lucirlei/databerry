@@ -1,7 +1,6 @@
 import { NextApiResponse } from 'next';
 import z from 'zod';
 
-import { AcceptedAIEnabledMimeTypes } from '@chaindesk/lib/accepted-mime-types';
 import { ApiError, ApiErrorType } from '@chaindesk/lib/api-error';
 import { deleteFolderFromS3Bucket } from '@chaindesk/lib/aws';
 import {
@@ -46,13 +45,6 @@ export const getConversation = async (
         },
       },
       participantsContacts: true,
-      attachments: {
-        where: {
-          mimeType: {
-            in: AcceptedAIEnabledMimeTypes,
-          },
-        },
-      },
       messages: {
         take: 50,
         include: {

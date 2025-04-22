@@ -1,11 +1,5 @@
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
-import {
-  Button,
-  CircularProgress,
-  Divider,
-  ListItemDecorator,
-  Typography,
-} from '@mui/joy';
+import { Button, CircularProgress, ListItemDecorator } from '@mui/joy';
 import IconButton from '@mui/joy/IconButton';
 import List, { ListProps } from '@mui/joy/List';
 import ListDivider from '@mui/joy/ListDivider';
@@ -16,12 +10,12 @@ import axios from 'axios';
 import React, { useCallback } from 'react';
 
 import useServiceProviders from '@app/hooks/useServiceProviders';
+import useStateReducer from '@app/hooks/useStateReducer';
 
 import { ServiceProvider } from '@chaindesk/prisma';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
-import Loader from '@chaindesk/ui/Loader';
 
 import Empty from './Empty';
+import Loader from './Loader';
 type Props = ListProps & {
   label?: string;
   type?: ServiceProviderType;
@@ -53,6 +47,7 @@ function ListServiceProviders({
     type,
     agentId,
   });
+
   const handleDelete = useCallback(
     (id: string) => async () => {
       try {
@@ -63,7 +58,6 @@ function ListServiceProviders({
         }
 
         setState({ isDeleteLoading: true });
-
         await axios.delete(`/api/service-providers/${id}`);
         query.mutate();
       } catch (err) {
@@ -85,8 +79,6 @@ function ListServiceProviders({
 
   return (
     <List {...otherProps}>
-      <Typography>Available {type} Integrations</Typography>
-      <Divider sx={{ mb: 3, mt: 1 }} />
       {query?.data?.map((provider, index) => (
         <React.Fragment key={provider.id}>
           <ListItem>

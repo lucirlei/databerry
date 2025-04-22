@@ -2,6 +2,7 @@ import { RocketLaunch } from '@mui/icons-material';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import Looks3RoundedIcon from '@mui/icons-material/Looks3Rounded';
 import Looks4RoundedIcon from '@mui/icons-material/Looks4Rounded';
+import Looks5RoundedIcon from '@mui/icons-material/Looks5Rounded';
 import LooksOneRoundedIcon from '@mui/icons-material/LooksOneRounded';
 import LooksTwoRoundedIcon from '@mui/icons-material/LooksTwoRounded';
 import {
@@ -32,7 +33,10 @@ import useSWRMutation from 'swr/mutation';
 
 import BlablaFormProvider from '@app/components/BlablaFormProvider';
 import BlablaFormViewer from '@app/components/BlablaFormViewer';
+import CopyButton from '@app/components/CopyButton';
+import Input from '@app/components/Input';
 import useBlablaForm from '@app/hooks/useBlablaForm';
+import useStateReducer from '@app/hooks/useStateReducer';
 import { getForm } from '@app/pages/api/forms/[formId]';
 import { publishForm } from '@app/pages/api/forms/[formId]/publish';
 
@@ -43,13 +47,11 @@ import {
 } from '@chaindesk/lib/swr-fetcher';
 import { CreateFormSchema } from '@chaindesk/lib/types/dtos';
 import { Prisma } from '@chaindesk/prisma';
-import CopyButton from '@chaindesk/ui/CopyButton';
-import TraditionalForm from '@chaindesk/ui/embeds/forms/traditional';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
-import Input from '@chaindesk/ui/Input';
-import Loader from '@chaindesk/ui/Loader';
+
+import Loader from '../Loader';
 
 import FieldsInput, { formType } from './FieldsInput';
+import { forceSubmit } from './utils';
 
 type Props = {
   formId: string;
@@ -67,6 +69,11 @@ function Form({ formId }: Props) {
     isPublishable: false,
     currentAccordionIndex: 1 as number | null,
   });
+
+  const getFormData = useSWR<Prisma.PromiseReturnType<typeof getForm>>(
+    `/api/forms/${formId}`,
+    fetcher
+  );
 
   const publishFormMutation = useSWRMutation<
     Prisma.PromiseReturnType<typeof publishForm>
@@ -189,6 +196,7 @@ function Form({ formId }: Props) {
                             methods.setValue('draftConfig.fields', fields);
                           }
 
+                          forceSubmit();
                         }
                       }}
                     >
@@ -330,6 +338,7 @@ function Form({ formId }: Props) {
                             {...field}
                             onChange={(_, val) => {
                               field.onChange(val);
+                              forceSubmit();
                             }}
                           >
                             <Option value="_blank">_blank</Option>
@@ -397,7 +406,7 @@ function Form({ formId }: Props) {
           </Button>
         </Stack>
 
-        <Stack sx={{ width: '100%', height: '100%' }} gap={1}>
+        <Stack sx={{ width: '100%' }} gap={1}>
           <Stack
             sx={(t) => ({
               // border: '1px solid',
@@ -407,78 +416,58 @@ function Form({ formId }: Props) {
               height: '100%',
               position: 'relative',
               overflow: 'hidden',
-              justifyContent: 'center',
-              alignItems: 'center',
             })}
           >
-            {!!query?.data?.publishedConfig && (
-              <Stack
+            <Stack
+              sx={{
+                width: '100%',
+                position: 'absolute',
+                top: 2,
+                left: 2,
+                pt: 2,
+                pr: 2,
+              }}
+            >
+              <Alert
+                variant="outlined"
+                size="sm"
+                startDecorator={
+                  <LockRoundedIcon fontSize="sm" sx={{ opacity: 0.5 }} />
+                }
                 sx={{
+                  borderRadius: 'lg',
                   width: '100%',
-                  position: 'absolute',
-                  top: 2,
-                  left: 2,
-                  pt: 2,
-                  pr: 2,
-                  zIndex: 1,
+                  py: 0.5,
+                  px: 1,
                 }}
+                className="backdrop-blur-lg"
               >
-                <Alert
-                  variant="outlined"
-                  size="sm"
-                  startDecorator={
-                    <LockRoundedIcon fontSize="sm" sx={{ opacity: 0.5 }} />
-                  }
-                  sx={{
-                    borderRadius: 'lg',
-                    width: '100%',
-                    py: 0.5,
-                    px: 1,
-                  }}
-                  className="backdrop-blur-lg"
+                <Typography
+                  level="body-sm"
+                  endDecorator={<CopyButton text={formPublicUrl} />}
                 >
-                  <Typography
-                    level="body-sm"
-                    endDecorator={<CopyButton text={formPublicUrl} />}
+                  <a
+                    href={formPublicUrl}
+                    className="hover:underline"
+                    target="_blank"
                   >
-                    <a
-                      href={formPublicUrl}
-                      className="hover:underline"
-                      target="_blank"
-                    >
-                      {formPublicUrl}
-                    </a>
-                  </Typography>
-                </Alert>
-              </Stack>
-            )}
-            {draftConfig && (
-              <Stack
-                sx={{
-                  width: '100%',
-                  maxWidth: '350px',
-                  mx: 0,
-                  my: 0,
-                  zIndex: 0,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  mt: 4,
-                }}
-              >
-                <TraditionalForm
-                  formId={formId}
-                  config={{
-                    fields: draftConfig?.fields,
-                    startScreen: draftConfig?.startScreen,
-                    endScreen: draftConfig?.endScreen,
-                    webhook: draftConfig?.webhook,
-                    schema: (draftConfig as any)?.schema,
-                  }}
-                  isFormSubmitted={state.currentAccordionIndex === 2}
-                  isInEditor
-                />
-              </Stack>
-            )}
+                    {formPublicUrl}
+                  </a>
+                </Typography>
+              </Alert>
+            </Stack>
+            <BlablaFormViewer
+              formId={formId}
+              type={type || 'conversational'}
+              config={{
+                fields: draftConfig?.fields,
+                startScreen: draftConfig?.startScreen,
+                endScreen: draftConfig?.endScreen,
+                webhook: draftConfig?.webhook,
+                schema: (query.data?.draftConfig as any)?.schema,
+              }}
+              isInEditor
+            />
           </Stack>
         </Stack>
       </Stack>

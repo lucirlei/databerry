@@ -1,8 +1,7 @@
 import Script from 'next/script';
 
-import Cta from '@chaindesk/ui/lp/cta';
-
 import Clients from '@/components/clients';
+import Cta from '@/components/cta';
 import Features01 from '@/components/features-01';
 import Features02 from '@/components/features-02';
 import Features03 from '@/components/features-03';

@@ -1,7 +1,6 @@
 import React from 'react';
 
-import Cta from '@chaindesk/ui/lp/cta';
-
+import Cta from '@/components/cta';
 import PricingTabs from '@/components/pricing-tabs';
 import Testimonials from '@/components/testimonials';
 import Section from '@/components/ui/section';

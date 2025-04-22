@@ -3,8 +3,6 @@ import { motion, stagger, useAnimate, Variants } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 
-import config from '@chaindesk/lib/config';
-
 import Particles from './ui/particles';
 import Clients from './clients';
 import TestimonialBadge from './testimonial-badge';
@@ -13,6 +11,7 @@ import Stats from '@/components/stats';
 import { TextGenerateEffect } from '@/components/ui/TextGenerateEffect';
 // import HeroImage from '@/public/images/hero-image.png';
 import HeroImage from '@/public/images/dashboard-screenshot.png';
+import config from '@/utils/config';
 import {
   defaultChildVariants,
   defaultContainerVariants,
@@ -63,10 +62,10 @@ export default function Hero() {
       >
         {/* Section content */}
         <div className="px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto">
+          <div className="mx-auto max-w-3xl">
             <div className="pb-12 text-center md:pb-16">
               <motion.h1
-                className="max-w-2xl pb-4 mx-auto text-5xl font-extrabold text-transparent font-bricolage-grotesque md:text-8xl text-zinc-800"
+                className="pb-4 mx-auto max-w-2xl text-5xl font-extrabold text-transparent font-bricolage-grotesque md:text-8xl text-zinc-800"
                 variants={childTextVariants}
               >
                 <TextGenerateEffect
@@ -74,9 +73,9 @@ export default function Hero() {
                   // text="Custom GPT Agent For Your Startup"
                   text={[
                     'Your',
-                    'Support',
+                    'Suport',
                     'On',
-                    // <em className="relative inline-flex items-center justify-center italic text-zinc-900">
+                    // <em className="inline-flex relative justify-center items-center italic text-zinc-900">
                     //   {' '}
                     //   GPT Agent
                     //   <motion.svg
@@ -114,7 +113,7 @@ export default function Hero() {
                     // </em>,
                     <em
                       key="gpt-agent"
-                      className="relative inline-flex items-end justify-center not-italic"
+                      className="inline-flex relative justify-center items-end not-italic"
                     >
                       AutoPilot
                       <motion.svg
@@ -154,7 +153,7 @@ export default function Hero() {
                   ]}
                 ></TextGenerateEffect>
                 {/* Custom{' '}
-                <em className="relative inline-flex items-center justify-center italic text-zinc-900">
+                <em className="inline-flex relative justify-center items-center italic text-zinc-900">
                   {' '}
                   GPT Agent
                   <svg
@@ -172,7 +171,7 @@ export default function Hero() {
                 for your startup */}
               </motion.h1>
               <motion.p
-                className="max-w-xl mx-auto mb-8 text-lg text-zinc-500 md:text-2xl"
+                className="mx-auto mb-8 max-w-xl text-lg text-zinc-500 md:text-2xl"
                 variants={childTextVariants}
 
                 // custom={2}
@@ -186,7 +185,7 @@ export default function Hero() {
 
               <div className="flex flex-col space-y-6">
                 <motion.div
-                  className="max-w-xs mx-auto space-y-4 sm:max-w-none sm:inline-flex sm:justify-center sm:space-y-0 sm:space-x-4"
+                  className="mx-auto space-y-4 max-w-xs sm:max-w-none sm:inline-flex sm:justify-center sm:space-y-0 sm:space-x-4"
                   variants={makeVariants({
                     ...defaultContainerVariants,
                     visible: {

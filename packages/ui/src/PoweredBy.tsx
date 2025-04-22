@@ -21,12 +21,7 @@ function PoweredBy({}: Props) {
         <Box className="truncate" sx={{ whiteSpace: 'nowrap' }}>
           <Typography level="body-xs" fontSize={'10px'}>
             Powered by{' '}
-            <Typography
-              level="body-xs"
-              fontSize={'10px'}
-              color="primary"
-              fontWeight="bold"
-            >
+            <Typography color="primary" fontWeight={'bold'}>
               ⚡️ Chaindesk
             </Typography>
           </Typography>

@@ -9,7 +9,6 @@ import {
   ActionApproval,
   Agent,
   Attachment,
-  Contact,
   Conversation,
   FormSubmission,
   LLMTaskOutput,
@@ -17,8 +16,6 @@ import {
   ServiceProvider,
   ServiceProviderType,
 } from '@chaindesk/prisma';
-
-import { NonNull } from '../type-utilites';
 
 export enum RouteNames {
   HOME = '/agents',
@@ -242,12 +239,3 @@ export type ChatMessage = {
   iconUrl?: string;
   fromName?: string;
 };
-
-export type CustomContact = Omit<
-  NonNull<Partial<Contact>>,
-  'updatedAt' | 'createdAt' | 'agentId' | 'organizationId'
->;
-
-export enum ChatboxEvent {
-  'CREATE_NEW_CONVERSATION' = 'CREATE_NEW_CONVERSATION',
-}

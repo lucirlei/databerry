@@ -6,8 +6,8 @@ import React from 'react';
 import slugify from '@chaindesk/lib/slugify';
 import { SummaryPageProps } from '@chaindesk/lib/types';
 import prisma from '@chaindesk/prisma/client';
-import Cta from '@chaindesk/ui/lp/cta';
 
+import Cta from '@/components/cta';
 import YoutubeSummary from '@/components/youtube-summarizer/summary';
 
 type Props = {
@@ -44,19 +44,14 @@ export async function generateMetadata(
 
   const title = summary?.output?.metadata?.title;
   return {
-    title: `${summary?.output?.metadata?.title}`,
+    title: `${summary?.output?.metadata?.title} - AI YouTube Video Summary | Chaindesk`,
     description:
-      summary?.output?.en?.videoSummary?.split?.('.')?.[0] ||
+      summary?.output?.metadata?.description ||
       `Generate YouTube video summaries instantly for free with AI`,
     alternates: {
       canonical: `/tools/youtube-summarizer/${id}`,
     },
-    twitter: {
-      site: `/tools/youtube-summarizer/${id}`,
-    },
     openGraph: {
-      type: 'article',
-      url: `/tools/youtube-summarizer/${id}`,
       images: [
         `/api/og/youtube-summary?state=${encodeURIComponent(
           JSON.stringify({
@@ -68,13 +63,9 @@ export async function generateMetadata(
         ...previousImages,
       ],
     },
-    other: {
-      'article:published_time': summary?.createdAt?.toISOString(),
-      'article:modified_time': new Date().toISOString(),
-    },
-    // keywords: `${
-    //   summary?.output?.metadata?.keywords?.join(', ') || ''
-    // } AI chatbot, No-code platform, AI Customer Support, Onboarding, Slack AI chatbot, Automation, Chaindesk, ChatGPT Plugin, Chat PDF, Chat with any document, Custom ChatGPT Bot, Chatbot GPT, Chatbot, ChatGPT Chatbot, WhatsApp ChatGPT Chatbot`,
+    keywords: `${
+      summary?.output?.metadata?.keywords?.join(', ') || ''
+    } AI chatbot, No-code platform, AI Customer Support, Onboarding, Slack AI chatbot, Automation, Chaindesk, ChatGPT Plugin, Chat PDF, Chat with any document, Custom ChatGPT Bot, Chatbot GPT, Chatbot, ChatGPT Chatbot, WhatsApp ChatGPT Chatbot`,
   };
 }
 

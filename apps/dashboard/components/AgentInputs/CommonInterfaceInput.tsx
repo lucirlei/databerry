@@ -1,10 +1,9 @@
-import { Divider, FormControl, FormLabel } from '@mui/joy';
+import { Divider } from '@mui/joy';
 import { useSession } from 'next-auth/react';
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 
-import { SketchPicker } from '@chaindesk/ui/ColorPicker';
-import Input from '@chaindesk/ui/Input';
+import Input from '@app/components/Input';
 
 import InitMessageInput from './InitMessageInput';
 import InterfaceConfigCheckbox from './InterfaceConfigCheckbox';
@@ -13,7 +12,7 @@ import SuggestionsInput from './SuggestionsInput';
 type Props = {};
 
 export default function CommonInterfaceInput(props: Props) {
-  const { watch, control, register, setValue } = useFormContext();
+  const { watch, control, register } = useFormContext();
   const { data: session } = useSession();
 
   const config = watch('interfaceConfig');
@@ -44,36 +43,17 @@ export default function CommonInterfaceInput(props: Props) {
       /> */}
       <InterfaceConfigCheckbox
         field="isBrandingDisabled"
-        label="Remove Chaindesk Branding (Pro plan required)"
-        disabled={
-          !session?.organization?.isPremium ||
-          session?.organization?.subscriptions?.[0]?.plan === 'level_1'
-        }
+        label="Remove Chaindesk Branding (premium account required)"
+        disabled={!session?.organization?.isPremium}
       />
       <SuggestionsInput />
-
-      <FormControl>
-        <FormLabel>Brand Color</FormLabel>
-        <SketchPicker
-          disableAlpha
-          color={config?.primaryColor || '42'}
-          onChange={(color) =>
-            setValue('interfaceConfig.primaryColor', color.hex, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormControl>
-
-      {/* <Input
+      <Input
         control={control}
         defaultValue={config?.primaryColor || '#000000'}
         placeholder="#000000"
         label="Brand Color"
         {...register('interfaceConfig.primaryColor')}
-      /> */}
-
+      />
       <Divider />
     </>
   );

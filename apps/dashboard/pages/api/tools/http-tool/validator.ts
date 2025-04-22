@@ -12,8 +12,8 @@ const handler = createAuthApiHandler();
 
 const bodySchema = z.object({
   url: z.string().url(),
-  headers: z.record(z.string(), z.string()).optional(),
-  body: z.record(z.string(), z.unknown()).optional(),
+  headers: z.record(z.string(), z.string()),
+  body: z.record(z.string(), z.unknown()),
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).default('GET'),
 });
 
@@ -34,27 +34,27 @@ export const validateEndpoint = async (
     switch (requestBody.method) {
       case 'GET': {
         const response = await axios.get(url, requestPayload);
-        testResult = { status: response.status, data: response.data };
+        testResult = { status: response.statusText, data: response.data };
         break;
       }
       case 'DELETE': {
         const response = await axios.delete(url, requestPayload);
-        testResult = { status: response.status, data: response.data };
+        testResult = { status: response.statusText, data: response.data };
         break;
       }
       case 'PATCH': {
         const response = await axios.patch(url, requestPayload);
-        testResult = { status: response.status, data: response.data };
+        testResult = { status: response.statusText, data: response.data };
         break;
       }
       case 'POST': {
         const response = await axios.post(url, requestPayload);
-        testResult = { status: response.status, data: response.data };
+        testResult = { status: response.statusText, data: response.data };
         break;
       }
       case 'PUT': {
         const response = await axios.put(url, requestPayload);
-        testResult = { status: response.status, data: response.data };
+        testResult = { status: response.statusText, data: response.data };
         break;
       }
     }

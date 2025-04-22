@@ -74,6 +74,7 @@ function UserMenu({}: Props) {
           <MenuItem onClick={() => signOut()}>Logout</MenuItem>
         </Menu>
       </Dropdown>
+      {/* <ColorSchemeToggle /> */}
     </Stack>
   );
 }

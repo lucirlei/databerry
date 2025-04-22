@@ -37,7 +37,11 @@ const retrieval = async (props: RetrievalProps) => {
     });
   }
 
-  return results;
+  // return results;
+  // Sort by order of appearance in the document
+  return results.sort(
+    (a, b) => a.metadata.chunk_offset! - b.metadata.chunk_offset!
+  );
 };
 
 export default retrieval;

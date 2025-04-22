@@ -16,6 +16,7 @@ import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { z } from 'zod';
 
+import Input from '@app/components/Input';
 import { upsertDatasource } from '@app/pages/api/datasources';
 
 import getS3RootDomain from '@chaindesk/lib/get-s3-root-domain';
@@ -31,7 +32,6 @@ import {
   DatasourceType,
   Prisma,
 } from '@chaindesk/prisma';
-import Input from '@chaindesk/ui/Input';
 
 import DatasourceTagsInput from '../DatasourceTagsInput';
 
@@ -76,6 +76,7 @@ const DatasourceText = (props: {
 
   return (
     <Textarea
+      // maxRows={21}
       minRows={4}
       disabled={props.disabled}
       {...methods.register('datasourceText')}
@@ -176,6 +177,13 @@ export default function BaseForm(props: Props) {
         }
       }
 
+      // const check = await axios.post('/api/datasources/check', payload);
+
+      // if (!check?.data?.valid) {
+      //   alert(check?.data?.message);
+      //   return;
+      // }
+
       const datasource = await upsertDatasourceMutation.trigger(payload as any);
 
       props?.onSubmitSuccess?.(datasource!);
@@ -226,7 +234,13 @@ export default function BaseForm(props: Props) {
 
         {props.children}
 
-        <DatasourceTagsInput />
+        <details>
+          <summary>Advanced Settings</summary>
+
+          <Stack sx={{ pl: 2, pt: 2 }}>
+            <DatasourceTagsInput />
+          </Stack>
+        </details>
 
         {!props.hideText && defaultValues?.datastoreId && defaultValues?.id && (
           <details>

@@ -26,8 +26,10 @@ export type FormToolPayload = Record<string, unknown>;
 export const toJsonSchema = ((tool: FormToolSchema) => {
   const form = tool.form as Form;
   return {
-    name: `${slugify(form.name)}-form`,
-    description: `${(tool.config as any)?.trigger}`,
+    name: `share-form-${slugify(form.name)}`,
+    description: `Generally, This is a tool that prompt the user with a form. ** Importantly **: ${
+      (tool.config as any)?.trigger
+    }`,
   };
 }) as any;
 
@@ -67,7 +69,7 @@ export const createHandlerV2 =
     const form = tool.form as Form;
 
     return {
-      data: `Please fill the following form in order to continue. (Reply in the same language as the user): ${process.env.NEXT_PUBLIC_DASHBOARD_URL}/forms/${form.id}?conversationId=${config?.conversationId}&messageId=${messageId}`,
+      data: `Form URL: ${process.env.NEXT_PUBLIC_DASHBOARD_URL}/forms/${form.id}?conversationId=${config?.conversationId}&messageId=${messageId}`,
       messageId,
       metadata: {
         isFormSubmitted: false,

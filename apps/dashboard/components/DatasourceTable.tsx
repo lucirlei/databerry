@@ -31,6 +31,7 @@ import * as React from 'react';
 import useSWR from 'swr';
 
 import useGetDatastoreQuery from '@app/hooks/useGetDatastoreQuery';
+import useStateReducer from '@app/hooks/useStateReducer';
 
 import pagination from '@chaindesk/lib/pagination';
 import relativeDate from '@chaindesk/lib/relative-date';
@@ -41,7 +42,6 @@ import {
   DatasourceType,
   Prisma,
 } from '@chaindesk/prisma';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 const SynchButton = ({
   datasource,

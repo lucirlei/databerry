@@ -1,7 +1,6 @@
 import { Box } from '@mui/joy';
 
-import ChatBox, { ChatBoxProps } from '@chaindesk/ui/Chatbox';
-
+import ChatBox, { ChatBoxProps } from './ChatBox';
 import ConversationList from './ConversationList';
 
 interface Props extends ChatBoxProps {
@@ -32,7 +31,6 @@ function ChatSection({
           rootSx={{
             pt: 1,
             height: '100%',
-            minHeight: '100%',
             width: '200px',
           }}
           currentConversationId={currentConversationId}

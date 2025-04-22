@@ -1,5 +1,8 @@
+import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import Button from '@mui/joy/Button';
+import Chip from '@mui/joy/Chip';
+import Divider from '@mui/joy/Divider';
 import List from '@mui/joy/List';
 import ListDivider from '@mui/joy/ListDivider';
 import ListItem from '@mui/joy/ListItem';
@@ -10,16 +13,16 @@ import Stack from '@mui/joy/Stack';
 import { SxProps } from '@mui/joy/styles/types';
 import Typography from '@mui/joy/Typography';
 import { useRouter } from 'next/router';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroller';
 import useSWR, { useSWRConfig } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
+import useStateReducer from '@app/hooks/useStateReducer';
 import { getConversations } from '@app/pages/api/conversations';
 
 import { fetcher } from '@chaindesk/lib/swr-fetcher';
 import { Prisma } from '@chaindesk/prisma';
-import useStateReducer from '@chaindesk/ui/hooks/useStateReducer';
 
 type Props = {
   agentId?: string;
@@ -62,6 +65,8 @@ const Item = (props: {
           </Typography>
         </ListItemButton>
       </ListItem>
+
+      {/* <ListDivider /> */}
     </React.Fragment>
   );
 };
@@ -75,7 +80,6 @@ function ConversationList({
 }: Props) {
   const scrollParentRef = useRef(null);
   const router = useRouter();
-
   const [state, setState] = useStateReducer({
     hasMore: true,
     hasLoadedOnce: false,
@@ -102,7 +106,7 @@ function ConversationList({
     },
     fetcher,
     {
-      refreshInterval: router?.query?.conversationId ? 5000 : 500,
+      refreshInterval: 5000,
       onSuccess: (data) => {
         const id = data?.[0]?.[0]?.id;
 
@@ -113,25 +117,19 @@ function ConversationList({
     }
   );
 
-  const conversations = useMemo(
-    () => getConversationsQuery?.data?.flat?.() || [],
-    [getConversationsQuery?.data]
-  );
-
-  const conversationsLength = useMemo(
-    () => conversations.length,
-    [conversations]
-  );
+  const conversations = getConversationsQuery?.data?.flat?.() || [];
 
   useEffect(() => {
-    const conversationId = (router.query.conversationId ||
-      conversations[0]?.id) as string;
     if (router.query?.conversationId) {
-      handleSelectConversation?.(conversationId);
+      handleSelectConversation?.(router.query.conversationId as string);
     } else {
-      handleSelectConversation?.(conversationId);
+      handleSelectConversation?.(conversations[0]?.id);
     }
-  }, [conversationsLength]);
+  }, [getConversationsQuery?.data]);
+
+  if (!getConversationsQuery.isLoading && conversations.length === 0) {
+    return null;
+  }
 
   return (
     <Stack
@@ -141,6 +139,7 @@ function ConversationList({
         borderColor: theme.palette.divider,
         ...(rootSx as any),
       })}
+      // gap={1}
     >
       <Button
         size="sm"
@@ -152,7 +151,7 @@ function ConversationList({
       >
         New Chat
       </Button>
-
+      {/* <Divider /> */}
       <List
         slotProps={{
           root: {
@@ -190,14 +189,12 @@ function ConversationList({
                   <ListItem>
                     <Skeleton variant="text" />
                   </ListItem>
+
+                  {/* <ListDivider />   */}
                 </React.Fragment>
               )) as any
           }
         >
-          {!router.query.conversationId && (
-            <Item id={'optimistic-id'} text={'new Chat'} selected={true} />
-          )}
-
           {conversations?.map((each) => (
             <Item
               key={each.id}

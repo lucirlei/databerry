@@ -12,6 +12,7 @@ import SettingCard from '@app/components/ui/SettingCard';
 import { CreateAgentSchema } from '@chaindesk/lib/types/dtos';
 import { Agent, AppDatasource as Datasource } from '@chaindesk/prisma';
 
+import Motion from '../Motion';
 import MotionBottom from '../MotionBottom';
 
 type Props = {

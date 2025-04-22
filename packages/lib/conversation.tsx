@@ -196,7 +196,6 @@ export default class ConversationManager {
             attachments: {
               createMany: {
                 data: (attachments || [])?.map((attachment) => ({
-                  conversationId: this.conversationId,
                   ...attachment,
                 })),
               },

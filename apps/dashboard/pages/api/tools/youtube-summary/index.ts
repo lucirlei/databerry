@@ -125,12 +125,7 @@ export const createYoutubeSummary = async (
     //   res.json({ processing: true });
     // }
 
-    const model = new ChatModel({
-      baseURL: ModelConfig[modelName]?.baseUrl,
-      apiKey: ModelConfig[modelName]?.baseUrl?.includes('openrouter.ai')
-        ? process.env.OPENROUTER_API_KEY
-        : process.env.OPENAI_API_KEY,
-    });
+    const model = new ChatModel();
 
     const results = Array(chunks.length) as Schema[];
 
@@ -147,11 +142,11 @@ export const createYoutubeSummary = async (
         messages: [
           {
             role: 'system',
-            content: `Extract thoroughly all chapters from a given youtube video chunked transcript. Make sure you include time offsets. Use English language only. Never mention the speaker.`,
+            content: `Extract thoroughly all chapters from a given youtube video chunked transcript. Make sure you include time offsets. Use English language only.`,
           },
           {
             role: 'user',
-            content: `Video transcript chunk number ${index}: ${chunkedText}`,
+            content: `Video transcript chunk number ${index} : ${chunkedText}`,
           },
         ],
       });
@@ -179,11 +174,11 @@ export const createYoutubeSummary = async (
       messages: [
         {
           role: 'system',
-          content: `Generate a short summary of a given youtube video. Format your response in markdown format to display the content in a nice and aerated way (but witout section titles). Do not mention the speaker, instead focus on the underlying knowledge.`,
+          content: `Generate a short summary of a given video transcript. Format your response in markdown format to display the content in a nice and aerated way (but witout section titles)`,
         },
         {
           role: 'user',
-          content: `Youtube Video: ### ${chaptersText} ### Generate a short but useful and engaging summary that highlights most important informations (1-5 sentences max): `,
+          content: `Transcript: ### ${chaptersText} ### Generate a short but useful summary that highlights most important informations (1-5 sentences).`,
         },
       ],
     });
@@ -199,7 +194,7 @@ export const createYoutubeSummary = async (
       messages: [
         {
           role: 'system',
-          content: `Generate a json array of useful questions and answers, focused on the underlying knowledge of a given file. Never mention the speaker.
+          content: `Generate a json array of useful questions and answers, focused on the underlying subject for a given essai.
           <output-example>
             {
               "questions": [{ "q": "What is nuclear fusion?", "a": "Nuclear fusion is the process by which two light atomic nuclei combine to form a single heavier one while releasing massive amounts of energy" }]
@@ -209,7 +204,7 @@ export const createYoutubeSummary = async (
         },
         {
           role: 'user',
-          content: `File: ### ${chaptersText} ### Generate a list of questions and answers focused on the underlying knowledge. Do not mention the speaker: `,
+          content: `Essai: ### ${chaptersText} ### Generate a list of questions and answers focused on the underlying subject: `,
         },
       ],
     });

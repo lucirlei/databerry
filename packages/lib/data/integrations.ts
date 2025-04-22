@@ -353,7 +353,7 @@ const items: Product[] = [
       description: ``,
     },
     youtubeVideoId: 'eV7vbhskUaM',
-    isComingSoon: false,
+    isComingSoon: true,
     isDatasource: false,
     isChannel: true,
     features: {
