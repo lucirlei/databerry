@@ -108,3 +108,37 @@ brew install chromium --no-quarantine
 # Dev emails inbox (maildev)
 # visit http://localhost:1080
 ```
+### Deployment via Portainer
+
+#### Prerequisites
+- An existing PostgreSQL database, Redis instance, and Traefik reverse proxy.
+- A Docker network named `traefik_proxy`:
+
+  ```sh
+  docker network create traefik_proxy
+  ```
+
+#### Environment variables and secrets
+1. Copy `.env.example` to `.env.portainer` and adjust values for your environment.
+2. Set `DATABASE_URL` and `REDIS_URL` to point to the existing services.
+3. Generate strong secrets for `NEXTAUTH_SECRET` and `JWT_SECRET`:
+
+  ```sh
+  openssl rand -hex 32
+  ```
+4. Map any persistent volumes defined in `docker-compose.portainer.yml` (for example `databerry_data:/app/data`).
+
+#### Deploy
+1. In Portainer, go to **Stacks → Add stack**.
+2. Upload `docker-compose.portainer.yml` as the stack file.
+3. Upload `.env.portainer` in the **Environment variables** section.
+4. Deploy the stack.
+
+#### Image options
+- Build the image directly in Portainer using the Dockerfile.
+- Or reference a pre-built image from a container registry in `docker-compose.portainer.yml`.
+
+#### Verification
+- Watch container logs and health checks in Portainer.
+- Confirm the service is attached to the `traefik_proxy` network and visible in the Traefik dashboard.
+- Access the application through the Traefik-managed URL to ensure it is reachable.
